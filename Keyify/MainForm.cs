@@ -24,7 +24,9 @@ namespace Keyify
         {
             InitializeComponent(); 
             this.WindowState = FormWindowState.Maximized;
-            //imageBox1.SetZoomScale(0.5, new Point(0, 0));
+            inputDisplay.SetZoomScale(0.5, new Point(0, 0));
+            transformedDisplay.SetZoomScale(0.5, new Point(0, 0));
+
 
             _model.OnInputImageChanged += new ImageChangedEventHandler(_model_OnInputImageChanged);
             _model.OnMarkupChanged += new MarkupChangedEventHandler(_model_OnMarkupChanged);
@@ -58,7 +60,11 @@ namespace Keyify
 
             foreach (Point p in _model.Cuts)
             {
-                _transformedMarkup.Draw(new Cross2DF(new PointF(p.X, p.Y), 20, 300), new Bgr(Color.Green), 3);
+                //_transformedMarkup.Draw(new Cross2DF(new PointF(p.X, p.Y), 20, 300), new Bgr(Color.Green), 3);
+                // TODO need to actually get the transform done via the model
+                Point transformedBaseLineStart = _model.BaseLineStart;
+                _transformedMarkup.Draw(new LineSegment2D(new Point(p.X, transformedBaseLineStart.Y - 400), new Point(p.X, transformedBaseLineStart.Y + 400)), new Bgr(Color.Green), 3);
+                _transformedMarkup.Draw(new LineSegment2D(new Point(p.X - 20, p.Y), new Point(p.X + 20, p.Y)), new Bgr(Color.Red), 3);
             }
 
              transformedDisplay.Image = _model.GetTransformedImage() + _transformedMarkup; 
