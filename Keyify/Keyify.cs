@@ -18,6 +18,7 @@ namespace Keyify
         public event MarkupChangedEventHandler OnMarkupChanged;
 
         private Image<Bgr, byte> _inputImage;
+        private Image<Bgr, byte> _transformedImage;
 
         public Keyify()
         {
@@ -28,21 +29,31 @@ namespace Keyify
         public void LoadInput(string path)
         {
             _inputImage = new Image<Bgr, byte>(path);
+            _transformedImage = _inputImage.Copy();
             OnInputImageChanged(this, EventArgs.Empty);
+            
         }
 
         public Image<Bgr, byte> GetInputImage()
         {
             // Make a copy and return as we dont want anything messing around with our image
-            return  _inputImage.Copy();
+            return _inputImage;//.Copy();
         }
 
         public Image<Bgr, byte> GetTransformedImage()
         {
+            return _transformedImage;//.Copy();
+        }
+
+        public void CalculateTransform()
+        {
             // TODO Probably need to do proper homography correction
             // TODO this calculation does not always work
             double angle = Math.Atan2((_baseLineStart.Y - _baseLineEnd.Y), (_baseLineStart.X - _baseLineEnd.X)) / Math.PI * 180;
-            return _inputImage.Copy().Rotate((180-angle), new Bgr(Color.Black));
+            _transformedImage = _inputImage.Copy().Rotate((180-angle), new Bgr(Color.Black));
+
+            // Reset position of cuts
+            _cuts[0] = new Point(_baseLineStart.X + 100, _baseLineStart.Y - 100);
         }
 
         private Point _baseLineStart, _baseLineEnd;
@@ -64,6 +75,8 @@ namespace Keyify
                 // TODO Calculate transformed coordinate
                 transformedBaseLineStart = value;
                 InterCutDistance = InterCutDistance;
+
+                //CalculateTransform();
             }   
         }
         public Point BaseLineEnd
@@ -85,6 +98,8 @@ namespace Keyify
                 // TODO Calculate transformed coordinate
                 transformedBaseLineEnd = value;
                 InterCutDistance = InterCutDistance;
+
+                //CalculateTransform();
             }
         }
 
@@ -124,6 +139,18 @@ namespace Keyify
             }
         }
 
+        public int FirstCut
+        {
+            get { return _cuts[0].X; }
+            set
+            {
+                Point p = _cuts[0];
+                p.X = value;
+                _cuts[0] = p;
+                InterCutDistance = InterCutDistance;
+            }
+        }
+
         public int NumberOfCuts
         {
             get { return _cuts.Count; }
@@ -132,14 +159,16 @@ namespace Keyify
                 if (value > _cuts.Count)
                 {
                     Point p = new Point(transformedBaseLineStart.X + 200, (transformedBaseLineStart.Y + 200));
-                    for (int i = 0; i < (value - _cuts.Count); i++)
+                    int c = value - _cuts.Count;
+                    for (int i = 0; i < c; i++)
                     {
                         _cuts.Add(p);
                     }   
                 }
                 else if (value < _cuts.Count)
                 {
-                    for (int i = 0; i < (_cuts.Count - value); i++)
+                    int c = _cuts.Count - value;
+                    for (int i = 0; i < c; i++)
                     {
                         _cuts.Remove(_cuts.Last());
                     }

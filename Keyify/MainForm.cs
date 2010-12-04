@@ -19,7 +19,7 @@ namespace Keyify
         private Image<Bgr, Byte> _inputImage;
         private Image<Bgr, Byte> _inputMarkup;
         private Image<Bgr, Byte> _transformedMarkup;
-        
+
         public MainForm()
         {
             InitializeComponent(); 
@@ -37,7 +37,7 @@ namespace Keyify
 
         void _model_OnTransformedImageChanged(object sender, EventArgs e)
         {
-            imageBox2.Image = _model.GetTransformedImage() + _transformedMarkup;
+            transformedDisplay.Image = _model.GetTransformedImage() + _transformedMarkup;
         }
 
         void _model_OnMarkupChanged(object sender, EventArgs e)
@@ -49,17 +49,19 @@ namespace Keyify
             {
                 _inputMarkup.Draw(new LineSegment2D(_model.BaseLineStart, _model.BaseLineEnd), new Bgr(Color.Blue), 3);
             }  
-            imageBox1.Image = _model.GetInputImage() + _inputMarkup;
+            inputDisplay.Image = _model.GetInputImage() + _inputMarkup;
 
-            _transformedMarkup = new Image<Bgr, byte>(_model.GetTransformedImage().Width, _model.GetTransformedImage().Height);
+            if(_transformedMarkup == null)
+                _transformedMarkup = new Image<Bgr, byte>(_model.GetTransformedImage().Width, _model.GetTransformedImage().Height);
+            else
+                _transformedMarkup.SetValue(new Bgr(Color.Black));
+
             foreach (Point p in _model.Cuts)
             {
-                _transformedMarkup.Draw(new Cross2DF(new PointF(p.X, p.Y), 20, 100), new Bgr(Color.Green), 3);
+                _transformedMarkup.Draw(new Cross2DF(new PointF(p.X, p.Y), 20, 300), new Bgr(Color.Green), 3);
             }
 
-            //_transformedMarkup.Draw(new LineSegment2D(_model.BaseLineStart, _model.BaseLineEnd), new Bgr(Color.Blue), 3);
-
-            imageBox2.Image = _model.GetTransformedImage() + _transformedMarkup;
+             transformedDisplay.Image = _model.GetTransformedImage() + _transformedMarkup; 
         }
 
         void _model_OnInputImageChanged(object sender, EventArgs e)
@@ -68,7 +70,7 @@ namespace Keyify
             _inputMarkup = new Image<Bgr, byte>(_model.GetInputImage().Width, _model.GetInputImage().Height);
             _transformedMarkup = new Image<Bgr, byte>(_model.GetTransformedImage().Width, _model.GetTransformedImage().Height);
             // Paint to imageBox
-            imageBox1.Image = _model.GetInputImage() + _inputMarkup;
+            inputDisplay.Image = _model.GetInputImage() + _inputMarkup;
         }
 
         private void imageBox1_MouseClick(object sender, MouseEventArgs e)
@@ -76,8 +78,8 @@ namespace Keyify
             if (e.Button == System.Windows.Forms.MouseButtons.Left)
             {
                 // Compute where the user actually clicked in the image
-                Point p = new Point((int)(imageBox1.HorizontalScrollBar.Value + e.Location.X / imageBox1.ZoomScale), 
-                    (int)(imageBox1.VerticalScrollBar.Value + e.Location.Y / imageBox1.ZoomScale));
+                Point p = new Point((int)(inputDisplay.HorizontalScrollBar.Value + e.Location.X / inputDisplay.ZoomScale), 
+                    (int)(inputDisplay.VerticalScrollBar.Value + e.Location.Y / inputDisplay.ZoomScale));
 
                 if (_model.BaseLineStart.X == 0)
                 {
@@ -126,15 +128,107 @@ namespace Keyify
         private void tabControl1_KeyDown(object sender, KeyEventArgs e)
         {
             toolStripStatusLabel1.Text = e.KeyCode.ToString();
+
+            // Numbers 1 to 3 select tab
+            if (e.KeyCode.ToString() == "D1")
+                tabControl1.SelectedIndex = 0;
+            if (e.KeyCode.ToString() == "D2")
+                tabControl1.SelectedIndex = 1;
+            if (e.KeyCode.ToString() == "D3")
+                tabControl1.SelectedIndex = 2;
+
+            // Numbers 4 to 9 select the number of bites
+            if (e.KeyCode.ToString() == "D4")
+                _model.NumberOfCuts = 4;
             if (e.KeyCode.ToString() == "D5")
                 _model.NumberOfCuts = 5;
+            if (e.KeyCode.ToString() == "D6")
+                _model.NumberOfCuts = 6;
+            if (e.KeyCode.ToString() == "D7")
+                _model.NumberOfCuts = 7;
+            if (e.KeyCode.ToString() == "D8")
+                _model.NumberOfCuts = 8;
             if (e.KeyCode.ToString() == "D9")
                 _model.NumberOfCuts = 9;
 
+
+            // Up/Down modifys intercut distance
             if (e.KeyCode == Keys.Up)
-                _model.InterCutDistance += 5;
+                _model.InterCutDistance += 1;
             if (e.KeyCode == Keys.Down)
-                _model.InterCutDistance -= 5;
+                _model.InterCutDistance -= 1;
+
+            if (e.KeyCode == Keys.Left)
+                _model.FirstCut -= 1;
+            if (e.KeyCode == Keys.Right)
+                _model.FirstCut += 1;
+        }
+
+        private void tabControl1_Selected(object sender, TabControlEventArgs e)
+        {
+            // Calculate new transform when we change tabs
+            _model.CalculateTransform();
+
+            GenerateStats();
+        }
+
+        private void GenerateStats()
+        {
+            statsTextBox.Text = "Intercut Distance (pixels): " + _model.InterCutDistance.ToString();
+        }
+
+        private void tabControl1_DragDrop(object sender, DragEventArgs e)
+        {
+            string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+            foreach (string file in files)
+            {
+                _model.LoadInput(file);
+            }
+        }
+
+        private void tabControl1_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop, false) == true)
+            {
+                e.Effect = DragDropEffects.All;
+            }
+        }
+
+        private void transformedDisplay_MouseClick(object sender, MouseEventArgs e)
+        {
+            //
+            // Update key depths
+            //
+
+            // Compute where the user actually clicked in the image
+            Point clicked = new Point((int)(transformedDisplay.HorizontalScrollBar.Value + e.Location.X / transformedDisplay.ZoomScale),
+                (int)(transformedDisplay.VerticalScrollBar.Value + e.Location.Y / transformedDisplay.ZoomScale));
+
+            // See if user clicked within a few X pixels of a cut
+            List<Point> cuts = _model.Cuts;
+            for (int i=0; i<cuts.Count; i++)
+            {
+                if (Math.Abs(cuts[i].X - clicked.X) < 10)
+                {
+                    Point p = cuts[i];
+                    p.Y = clicked.Y;
+                    cuts[i] = p;
+                }
+            }
+            _model.Cuts = cuts;
+        }
+
+        private void inputDisplay_MouseDoubleClick(object sender, MouseEventArgs e)
+        {
+            // If user double clicks they want to set the shoulder end of the baseline
+            if (e.Button == System.Windows.Forms.MouseButtons.Left)
+            {
+                // Compute where the user actually clicked in the image
+                Point p = new Point((int)(inputDisplay.HorizontalScrollBar.Value + e.Location.X / inputDisplay.ZoomScale),
+                    (int)(inputDisplay.VerticalScrollBar.Value + e.Location.Y / inputDisplay.ZoomScale));
+
+                _model.BaseLineStart = new Point(p.X, p.Y);
+            }
         }
 
         

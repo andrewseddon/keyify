@@ -29,7 +29,7 @@
         private void InitializeComponent()
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
-            this.imageBox1 = new Emgu.CV.UI.ImageBox();
+            this.inputDisplay = new Emgu.CV.UI.ImageBox();
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.openToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -39,28 +39,32 @@
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.tabPage1 = new System.Windows.Forms.TabPage();
             this.tabPage2 = new System.Windows.Forms.TabPage();
-            this.imageBox2 = new Emgu.CV.UI.ImageBox();
-            ((System.ComponentModel.ISupportInitialize)(this.imageBox1)).BeginInit();
+            this.transformedDisplay = new Emgu.CV.UI.ImageBox();
+            this.tabPage3 = new System.Windows.Forms.TabPage();
+            this.statsTextBox = new System.Windows.Forms.RichTextBox();
+            ((System.ComponentModel.ISupportInitialize)(this.inputDisplay)).BeginInit();
             this.menuStrip1.SuspendLayout();
             this.statusStrip1.SuspendLayout();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.tabPage2.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.imageBox2)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.transformedDisplay)).BeginInit();
+            this.tabPage3.SuspendLayout();
             this.SuspendLayout();
             // 
-            // imageBox1
+            // inputDisplay
             // 
-            this.imageBox1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            this.inputDisplay.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
                         | System.Windows.Forms.AnchorStyles.Left)
                         | System.Windows.Forms.AnchorStyles.Right)));
-            this.imageBox1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.imageBox1.Location = new System.Drawing.Point(-4, 0);
-            this.imageBox1.Name = "imageBox1";
-            this.imageBox1.Size = new System.Drawing.Size(914, 283);
-            this.imageBox1.TabIndex = 2;
-            this.imageBox1.TabStop = false;
-            this.imageBox1.MouseClick += new System.Windows.Forms.MouseEventHandler(this.imageBox1_MouseClick);
+            this.inputDisplay.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.inputDisplay.Location = new System.Drawing.Point(-4, 0);
+            this.inputDisplay.Name = "inputDisplay";
+            this.inputDisplay.Size = new System.Drawing.Size(914, 283);
+            this.inputDisplay.TabIndex = 2;
+            this.inputDisplay.TabStop = false;
+            this.inputDisplay.MouseClick += new System.Windows.Forms.MouseEventHandler(this.imageBox1_MouseClick);
+            this.inputDisplay.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.inputDisplay_MouseDoubleClick);
             // 
             // menuStrip1
             // 
@@ -111,51 +115,79 @@
             // 
             // tabControl1
             // 
+            this.tabControl1.AllowDrop = true;
             this.tabControl1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
                         | System.Windows.Forms.AnchorStyles.Left)
                         | System.Windows.Forms.AnchorStyles.Right)));
             this.tabControl1.Controls.Add(this.tabPage1);
             this.tabControl1.Controls.Add(this.tabPage2);
+            this.tabControl1.Controls.Add(this.tabPage3);
             this.tabControl1.Location = new System.Drawing.Point(0, 27);
             this.tabControl1.Name = "tabControl1";
             this.tabControl1.SelectedIndex = 0;
             this.tabControl1.Size = new System.Drawing.Size(918, 305);
             this.tabControl1.TabIndex = 5;
+            this.tabControl1.Selected += new System.Windows.Forms.TabControlEventHandler(this.tabControl1_Selected);
+            this.tabControl1.DragDrop += new System.Windows.Forms.DragEventHandler(this.tabControl1_DragDrop);
+            this.tabControl1.DragEnter += new System.Windows.Forms.DragEventHandler(this.tabControl1_DragEnter);
             this.tabControl1.KeyDown += new System.Windows.Forms.KeyEventHandler(this.tabControl1_KeyDown);
             // 
             // tabPage1
             // 
-            this.tabPage1.Controls.Add(this.imageBox1);
+            this.tabPage1.Controls.Add(this.inputDisplay);
             this.tabPage1.Location = new System.Drawing.Point(4, 22);
             this.tabPage1.Name = "tabPage1";
             this.tabPage1.Padding = new System.Windows.Forms.Padding(3);
             this.tabPage1.Size = new System.Drawing.Size(910, 279);
             this.tabPage1.TabIndex = 0;
-            this.tabPage1.Text = "Input(1)";
+            this.tabPage1.Text = "1 - Input";
             this.tabPage1.UseVisualStyleBackColor = true;
             // 
             // tabPage2
             // 
-            this.tabPage2.Controls.Add(this.imageBox2);
+            this.tabPage2.Controls.Add(this.transformedDisplay);
             this.tabPage2.Location = new System.Drawing.Point(4, 22);
             this.tabPage2.Name = "tabPage2";
             this.tabPage2.Padding = new System.Windows.Forms.Padding(3);
             this.tabPage2.Size = new System.Drawing.Size(910, 279);
             this.tabPage2.TabIndex = 1;
-            this.tabPage2.Text = "Markup(2)";
+            this.tabPage2.Text = "2 - Transformed";
             this.tabPage2.UseVisualStyleBackColor = true;
             // 
-            // imageBox2
+            // transformedDisplay
             // 
-            this.imageBox2.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            this.transformedDisplay.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
                         | System.Windows.Forms.AnchorStyles.Left)
                         | System.Windows.Forms.AnchorStyles.Right)));
-            this.imageBox2.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.imageBox2.Location = new System.Drawing.Point(-2, -2);
-            this.imageBox2.Name = "imageBox2";
-            this.imageBox2.Size = new System.Drawing.Size(914, 283);
-            this.imageBox2.TabIndex = 3;
-            this.imageBox2.TabStop = false;
+            this.transformedDisplay.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.transformedDisplay.Location = new System.Drawing.Point(-2, -2);
+            this.transformedDisplay.Name = "transformedDisplay";
+            this.transformedDisplay.Size = new System.Drawing.Size(914, 283);
+            this.transformedDisplay.TabIndex = 3;
+            this.transformedDisplay.TabStop = false;
+            this.transformedDisplay.MouseClick += new System.Windows.Forms.MouseEventHandler(this.transformedDisplay_MouseClick);
+            // 
+            // tabPage3
+            // 
+            this.tabPage3.Controls.Add(this.statsTextBox);
+            this.tabPage3.Location = new System.Drawing.Point(4, 22);
+            this.tabPage3.Name = "tabPage3";
+            this.tabPage3.Size = new System.Drawing.Size(910, 279);
+            this.tabPage3.TabIndex = 2;
+            this.tabPage3.Text = "3 - Stats";
+            this.tabPage3.UseVisualStyleBackColor = true;
+            // 
+            // statsTextBox
+            // 
+            this.statsTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+                        | System.Windows.Forms.AnchorStyles.Left)
+                        | System.Windows.Forms.AnchorStyles.Right)));
+            this.statsTextBox.Font = new System.Drawing.Font("Verdana", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.statsTextBox.Location = new System.Drawing.Point(21, 28);
+            this.statsTextBox.Name = "statsTextBox";
+            this.statsTextBox.Size = new System.Drawing.Size(867, 226);
+            this.statsTextBox.TabIndex = 0;
+            this.statsTextBox.Text = "";
             // 
             // MainForm
             // 
@@ -170,7 +202,7 @@
             this.Name = "MainForm";
             this.Text = "Keyify";
             this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.Form1_KeyDown);
-            ((System.ComponentModel.ISupportInitialize)(this.imageBox1)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.inputDisplay)).EndInit();
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();
             this.statusStrip1.ResumeLayout(false);
@@ -178,7 +210,8 @@
             this.tabControl1.ResumeLayout(false);
             this.tabPage1.ResumeLayout(false);
             this.tabPage2.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.imageBox2)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.transformedDisplay)).EndInit();
+            this.tabPage3.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -186,7 +219,7 @@
 
         #endregion
 
-        private Emgu.CV.UI.ImageBox imageBox1;
+        private Emgu.CV.UI.ImageBox inputDisplay;
         private System.Windows.Forms.MenuStrip menuStrip1;
         private System.Windows.Forms.ToolStripMenuItem fileToolStripMenuItem;
         private System.Windows.Forms.StatusStrip statusStrip1;
@@ -194,9 +227,11 @@
         private System.Windows.Forms.TabControl tabControl1;
         private System.Windows.Forms.TabPage tabPage1;
         private System.Windows.Forms.TabPage tabPage2;
-        private Emgu.CV.UI.ImageBox imageBox2;
+        private Emgu.CV.UI.ImageBox transformedDisplay;
         private System.Windows.Forms.ToolStripMenuItem openToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem saveToolStripMenuItem;
+        private System.Windows.Forms.TabPage tabPage3;
+        private System.Windows.Forms.RichTextBox statsTextBox;
 
 
     }
