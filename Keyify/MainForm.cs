@@ -77,6 +77,17 @@ namespace Keyify
                 _transformedMarkup.Draw(new LineSegment2D(new Point(p.X - 20, p.Y), new Point(p.X + 20, p.Y)), new Bgr(Color.Red), 3);
             }
 
+            /*
+            _transformedMarkup.Draw(
+                new Cross2DF(
+                    new PointF((float)_model.transformedBaseLineStart.X, (float)_model.transformedBaseLineStart.Y),
+                    30.0f,40.0f), 
+                    new Bgr(Color.Green), 3);
+            */
+
+            _transformedMarkup.Draw(new Cross2DF(new PointF(_model.transformedBaseLineStart.X, _model.transformedBaseLineStart.Y), 20, 100), new Bgr(Color.Green), 3);
+            _transformedMarkup.Draw(new LineSegment2D(_model.transformedBaseLineStart, _model.transformedBaseLineEnd), new Bgr(Color.Blue), 3);
+
              transformedDisplay.Image = _model.GetTransformedImage() + _transformedMarkup; 
         }
 
@@ -201,7 +212,7 @@ namespace Keyify
                 _model.NumberOfCuts = 9;
 
 
-            // Up/Down modifys intercut distance
+            // Up/Down modifys intercut distance 
             if (e.KeyCode == Keys.Up)
                 _model.InterCutDistance += 1;
             if (e.KeyCode == Keys.Down)

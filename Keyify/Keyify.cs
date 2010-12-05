@@ -20,6 +20,8 @@ namespace Keyify
         private Image<Bgr, byte> _inputImage;
         private Image<Bgr, byte> _transformedImage;
 
+        private double _rotationAngle = 0;
+
         bool _baseLineHasChanged = true;
 
         public Keyify()
@@ -53,8 +55,8 @@ namespace Keyify
             {
                 // TODO Probably need to do proper homography correction
                 // TODO this calculation does not always work
-                double angle = Math.Atan2((_baseLineStart.Y - _baseLineEnd.Y), (_baseLineStart.X - _baseLineEnd.X)) / Math.PI * 180;
-                _transformedImage = _inputImage.Copy().Rotate((180 - angle), new Bgr(Color.Black));
+                _rotationAngle = 180.0 - Math.Atan2((_baseLineStart.Y - _baseLineEnd.Y), (_baseLineStart.X - _baseLineEnd.X)) / Math.PI * 180;
+                _transformedImage = _inputImage.Copy().Rotate(_rotationAngle, new Bgr(Color.Black));
 
                 // Reset position of cuts
                 _cuts[0] = new Point(_baseLineStart.X + 100, _baseLineStart.Y - 100);
@@ -77,20 +79,21 @@ namespace Keyify
             set
             {
                 _baseLineStart = value;
-                if (OnMarkupChanged!=null)
-                {
-                    OnMarkupChanged(this, EventArgs.Empty);
-                }
-                if (OnTransformedImageChanged != null)
-                {
-                    OnTransformedImageChanged(this, EventArgs.Empty);
-                }
 
-                // TODO Calculate transformed coordinate
-                transformedBaseLineStart = value;
-                InterCutDistance = InterCutDistance;
+                PointF center = new PointF(_inputImage.Width * 0.5f, _inputImage.Height * 0.5f);
+                RotationMatrix2D<float> rotationMatrix = new RotationMatrix2D<float>(center, -_rotationAngle, 1);
+                transformedBaseLineStart = new Point(_baseLineStart.X, _baseLineStart.Y);
+                PointF[] p = new PointF[] { new PointF(value.X, value.Y) };
+                rotationMatrix.RotatePoints(p);
+                transformedBaseLineStart = new Point((int)p[0].X, (int)p[0].Y);
 
+                CalculateCutPositions();
                 _baseLineHasChanged = true;
+
+                if (OnMarkupChanged!=null)
+                    OnMarkupChanged(this, EventArgs.Empty);
+                if (OnTransformedImageChanged != null)
+                    OnTransformedImageChanged(this, EventArgs.Empty);    
             }   
         }
         public Point BaseLineEnd
@@ -99,19 +102,21 @@ namespace Keyify
             set 
             { 
                 _baseLineEnd = value;
-                if (OnMarkupChanged != null)
-                {
-                    OnMarkupChanged(this, EventArgs.Empty);
-                    OnTransformedImageChanged(this, EventArgs.Empty);
-                }
-                if (OnTransformedImageChanged != null)
-                {
-                    OnTransformedImageChanged(this, EventArgs.Empty);
-                }
 
-                // TODO Calculate transformed coordinate
-                transformedBaseLineEnd = value;
+                PointF center = new PointF(_inputImage.Width * 0.5f, _inputImage.Height * 0.5f);
+                RotationMatrix2D<float> rotationMatrix = new RotationMatrix2D<float>(center, -_rotationAngle, 1);
+                transformedBaseLineEnd = new Point(_baseLineEnd.X, _baseLineEnd.Y);
+                PointF[] p = new PointF[] { new PointF(value.X, value.Y) };
+                rotationMatrix.RotatePoints(p);
+                transformedBaseLineEnd = new Point((int)p[0].X, (int)p[0].Y);
+
                 _baseLineHasChanged = true;
+
+                if (OnMarkupChanged != null)
+                    OnMarkupChanged(this, EventArgs.Empty);
+                    //OnTransformedImageChanged(this, EventArgs.Empty);
+                if (OnTransformedImageChanged != null)
+                    OnTransformedImageChanged(this, EventArgs.Empty);   
             }
         }
 
