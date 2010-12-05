@@ -19,6 +19,10 @@ namespace Keyify
         private Image<Bgr, Byte> _inputImage;
         private Image<Bgr, Byte> _inputMarkup;
         private Image<Bgr, Byte> _transformedMarkup;
+        
+        enum EMarkupType { Baseline, CoinVertical, CoinHorizontal};
+        EMarkupType _markupMode;
+
 
         public MainForm()
         {
@@ -51,6 +55,9 @@ namespace Keyify
             {
                 _inputMarkup.Draw(new LineSegment2D(_model.BaseLineStart, _model.BaseLineEnd), new Bgr(Color.Blue), 3);
             }  
+            _inputMarkup.Draw(new Rectangle(_model.CoinBottomLeft.X, _model.CoinBottomLeft.Y,
+                _model.CoinTopRight.X - _model.CoinBottomLeft.X, _model.CoinTopRight.Y - _model.CoinBottomLeft.Y), new Bgr(Color.Yellow), 3);
+
             inputDisplay.Image = _model.GetInputImage() + _inputMarkup;
 
             if(_transformedMarkup == null)
@@ -58,8 +65,11 @@ namespace Keyify
             else
                 _transformedMarkup.SetValue(new Bgr(Color.Black));
 
-            foreach (Point p in _model.Cuts)
+            //foreach (Point p in _model.Cuts)
+            //{
+            for(int i=0; i<_model.NumberOfCuts; i++)
             {
+                Point p = _model.GetCut(i);
                 //_transformedMarkup.Draw(new Cross2DF(new PointF(p.X, p.Y), 20, 300), new Bgr(Color.Green), 3);
                 // TODO need to actually get the transform done via the model
                 Point transformedBaseLineStart = _model.BaseLineStart;
@@ -87,23 +97,48 @@ namespace Keyify
                 Point p = new Point((int)(inputDisplay.HorizontalScrollBar.Value + e.Location.X / inputDisplay.ZoomScale), 
                     (int)(inputDisplay.VerticalScrollBar.Value + e.Location.Y / inputDisplay.ZoomScale));
 
-                if (_model.BaseLineStart.X == 0)
+                if (_markupMode == EMarkupType.Baseline)
                 {
-                    _model.BaseLineStart = new Point(p.X, p.Y);
+                    if (_model.BaseLineStart.X == 0)
+                    {
+                        _model.BaseLineStart = new Point(p.X, p.Y);
+                    }
+                    else if (_model.BaseLineEnd.X == 0)
+                    {
+                        _model.BaseLineEnd = new Point(p.X, p.Y);
+                    }
+                    // Move the start/end of the baseline to that point depending on which was closer to the click
+                    // TODO Should probably use distance vector here
+                    else if (Math.Abs(p.X - _model.BaseLineStart.X) < Math.Abs(p.X - _model.BaseLineEnd.X))
+                    {
+                        _model.BaseLineStart = new Point(p.X, p.Y);
+                    }
+                    else
+                    {
+                        _model.BaseLineEnd = new Point(p.X, p.Y);
+                    }
                 }
-                else if (_model.BaseLineEnd.X == 0)
+                else if (_markupMode == EMarkupType.CoinVertical)
                 {
-                    _model.BaseLineEnd = new Point(p.X, p.Y);
+                    if((Math.Abs(_model.CoinBottomLeft.X - p.X) < (Math.Abs(_model.CoinTopRight.X - p.X))))
+                    {
+                        _model.CoinBottomLeft = new Point(p.X, _model.CoinBottomLeft.Y);
+                    }
+                    else
+                    {
+                        _model.CoinTopRight = new Point(p.X, _model.CoinTopRight.Y);
+                    }                                  
                 }
-                // Move the start/end of the baseline to that point depending on which was closer to the click
-                // TODO Should probably use distance vector here
-                else if (Math.Abs(p.X - _model.BaseLineStart.X) < Math.Abs(p.X - _model.BaseLineEnd.X))
+                else if (_markupMode == EMarkupType.CoinHorizontal)
                 {
-                    _model.BaseLineStart = new Point(p.X, p.Y);
-                }
-                else
-                {
-                    _model.BaseLineEnd = new Point(p.X, p.Y);
+                    if ((Math.Abs(_model.CoinBottomLeft.Y - p.Y) < (Math.Abs(_model.CoinTopRight.Y - p.Y))))
+                    {
+                        _model.CoinBottomLeft = new Point(_model.CoinBottomLeft.X, p.Y);
+                    }
+                    else
+                    {
+                        _model.CoinTopRight = new Point(_model.CoinTopRight.X, p.Y);
+                    }
                 }
 
                 // Display coordinates where the user clicked
@@ -135,13 +170,21 @@ namespace Keyify
         {
             toolStripStatusLabel1.Text = e.KeyCode.ToString();
 
-            // Numbers 1 to 3 select tab
-            if (e.KeyCode.ToString() == "D1")
+            // F1 to F3 select tab
+            if (e.KeyCode == Keys.F1)
                 tabControl1.SelectedIndex = 0;
-            if (e.KeyCode.ToString() == "D2")
+            if (e.KeyCode == Keys.F2)
                 tabControl1.SelectedIndex = 1;
-            if (e.KeyCode.ToString() == "D3")
+            if (e.KeyCode == Keys.F3)
                 tabControl1.SelectedIndex = 2;
+
+            // Numbers 1 and two switch between marking up the baseline and coin
+            if (e.KeyCode.ToString() == "D1")
+                _markupMode = EMarkupType.Baseline;
+            if (e.KeyCode.ToString() == "D2")
+                _markupMode = EMarkupType.CoinVertical;
+            if (e.KeyCode.ToString() == "D3")
+                _markupMode = EMarkupType.CoinHorizontal;
 
             // Numbers 4 to 9 select the number of bites
             if (e.KeyCode.ToString() == "D4")
@@ -180,7 +223,14 @@ namespace Keyify
 
         private void GenerateStats()
         {
-            statsTextBox.Text = "Intercut Distance (pixels): " + _model.InterCutDistance.ToString();
+            statsTextBox.Text = "Intercut Distance (pixels): " + _model.InterCutDistance.ToString() + "\n\r";
+            statsTextBox.Text += "Cut#,Pixels from Shoulder,Pixels from Baseline,Cut Depth(mm)\n\r";
+            for(int i=0; i<_model.NumberOfCuts; i++)
+            {
+                statsTextBox.Text += i.ToString() + "," + (_model.GetCut(i).X - _model.transformedBaseLineStart.X).ToString() +
+                    "," + (_model.GetCut(i).Y - _model.transformedBaseLineStart.Y).ToString() +
+                    "," + _model.GetCutRealDepth(i).ToString() + "\n\r";
+            }
         }
 
         private void tabControl1_DragDrop(object sender, DragEventArgs e)
@@ -211,17 +261,13 @@ namespace Keyify
                 (int)(transformedDisplay.VerticalScrollBar.Value + e.Location.Y / transformedDisplay.ZoomScale));
 
             // See if user clicked within a few X pixels of a cut
-            List<Point> cuts = _model.Cuts;
-            for (int i=0; i<cuts.Count; i++)
+            for (int i=0; i<_model.NumberOfCuts; i++)
             {
-                if (Math.Abs(cuts[i].X - clicked.X) < 10)
+                if (Math.Abs(_model.GetCut(i).X - clicked.X) < 10)
                 {
-                    Point p = cuts[i];
-                    p.Y = clicked.Y;
-                    cuts[i] = p;
+                    _model.SetCut(i, clicked.Y);
                 }
             }
-            _model.Cuts = cuts;
         }
 
         private void inputDisplay_MouseDoubleClick(object sender, MouseEventArgs e)

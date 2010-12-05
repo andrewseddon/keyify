@@ -20,10 +20,12 @@ namespace Keyify
         private Image<Bgr, byte> _inputImage;
         private Image<Bgr, byte> _transformedImage;
 
+        bool _baseLineHasChanged = true;
+
         public Keyify()
         {
             // Setup some defaults
-            NumberOfCuts = 7;
+            NumberOfCuts = 5;
         }
 
         public void LoadInput(string path)
@@ -47,13 +49,25 @@ namespace Keyify
 
         public void CalculateTransform()
         {
-            // TODO Probably need to do proper homography correction
-            // TODO this calculation does not always work
-            double angle = Math.Atan2((_baseLineStart.Y - _baseLineEnd.Y), (_baseLineStart.X - _baseLineEnd.X)) / Math.PI * 180;
-            _transformedImage = _inputImage.Copy().Rotate((180-angle), new Bgr(Color.Black));
+            if (_baseLineHasChanged)
+            {
+                // TODO Probably need to do proper homography correction
+                // TODO this calculation does not always work
+                double angle = Math.Atan2((_baseLineStart.Y - _baseLineEnd.Y), (_baseLineStart.X - _baseLineEnd.X)) / Math.PI * 180;
+                _transformedImage = _inputImage.Copy().Rotate((180 - angle), new Bgr(Color.Black));
 
-            // Reset position of cuts
-            _cuts[0] = new Point(_baseLineStart.X + 100, _baseLineStart.Y - 100);
+                // Reset position of cuts
+                _cuts[0] = new Point(_baseLineStart.X + 100, _baseLineStart.Y - 100);
+
+                CalculateCutPositions();
+
+                if (OnTransformedImageChanged != null)
+                {
+                    OnTransformedImageChanged(this, EventArgs.Empty);
+                }
+
+                _baseLineHasChanged = false;
+            }
         }
 
         private Point _baseLineStart, _baseLineEnd;
@@ -76,7 +90,7 @@ namespace Keyify
                 transformedBaseLineStart = value;
                 InterCutDistance = InterCutDistance;
 
-                //CalculateTransform();
+                _baseLineHasChanged = true;
             }   
         }
         public Point BaseLineEnd
@@ -97,46 +111,53 @@ namespace Keyify
 
                 // TODO Calculate transformed coordinate
                 transformedBaseLineEnd = value;
-                InterCutDistance = InterCutDistance;
-
-                //CalculateTransform();
+                _baseLineHasChanged = true;
             }
         }
 
-        private Point transformedBaseLineStart;
-        private Point transformedBaseLineEnd;
+        public Point transformedBaseLineStart;
+        public Point transformedBaseLineEnd;
 
-        private List<Point> _cuts = new List<Point>();
-        
-        public List<Point> Cuts
+        //private List<Point> _cuts = new List<Point>();
+        private Point[] _cuts = new Point[20];
+       
+        public void SetCut(int cutIndex, int depth)
         {
-            get { return _cuts; }
-            set
+            if (cutIndex < NumberOfCuts)
             {
-                _cuts = value;
-                if (OnMarkupChanged != null)
-                {
-                    OnMarkupChanged(this, EventArgs.Empty);
-                }
+                _cuts[cutIndex].Y = depth;
             }
+
+            if (OnMarkupChanged != null)
+                OnMarkupChanged(this, EventArgs.Empty);
         }
 
-        private int _interCutDistance = 200;
+        public Point GetCut(int cutIndex)
+        {
+            return _cuts[cutIndex];
+        }
+
+        private int _interCutDistance = 100;
         public int InterCutDistance
         {
             get { return _interCutDistance; }
             set
             {
                 _interCutDistance = value;
-                // Recalculate all existing cuts
-                List<Point> newCuts = new List<Point>();
-                for(int i=0; i<_cuts.Count; i++)
-                {
-                    Point p = new Point(_cuts[0].X + i * _interCutDistance, _cuts[0].Y); 
-                    newCuts.Add(p);
-                }
-                Cuts = newCuts;
+                CalculateCutPositions();      
             }
+        }
+
+        private void CalculateCutPositions()
+        {
+            // Recalculate all existing cuts
+            for (int i = 0; i < _numberOfCuts; i++)
+            {
+                _cuts[i].X = _cuts[0].X + i * _interCutDistance;
+            }
+
+            if (OnMarkupChanged != null)
+                OnMarkupChanged(this, EventArgs.Empty);
         }
 
         public int FirstCut
@@ -144,39 +165,53 @@ namespace Keyify
             get { return _cuts[0].X; }
             set
             {
-                Point p = _cuts[0];
-                p.X = value;
-                _cuts[0] = p;
-                InterCutDistance = InterCutDistance;
+                _cuts[0].X = value;
+                CalculateCutPositions();
             }
         }
 
+        private int _numberOfCuts = 5;
         public int NumberOfCuts
         {
-            get { return _cuts.Count; }
+            get { return _numberOfCuts; }
             set
             {
-                if (value > _cuts.Count)
-                {
-                    Point p = new Point(transformedBaseLineStart.X + 200, (transformedBaseLineStart.Y + 200));
-                    int c = value - _cuts.Count;
-                    for (int i = 0; i < c; i++)
-                    {
-                        _cuts.Add(p);
-                    }   
-                }
-                else if (value < _cuts.Count)
-                {
-                    int c = _cuts.Count - value;
-                    for (int i = 0; i < c; i++)
-                    {
-                        _cuts.Remove(_cuts.Last());
-                    }
-                }
-
-                // Calculate where new cuts should go
-                InterCutDistance = InterCutDistance;
+                _numberOfCuts = value;
+                CalculateCutPositions();
             }
+        }
+
+        private Point _coinBottomLeft = new Point(1000,1000);
+        private Point _coinTopRight = new Point(1500,100);
+        public Point CoinBottomLeft
+        {
+            get { return _coinBottomLeft; }
+            set 
+            { 
+                _coinBottomLeft = value;
+
+                if (OnMarkupChanged != null)
+                    OnMarkupChanged(this, EventArgs.Empty);
+            }
+        }
+        
+        public Point CoinTopRight
+        {
+            get { return _coinTopRight; }
+            set 
+            { 
+                _coinTopRight = value;
+
+                if (OnMarkupChanged != null)
+                    OnMarkupChanged(this, EventArgs.Empty);
+            }
+        }
+
+        public double CoinDiameter = 20.335;
+
+        public double GetCutRealDepth(int index)
+        {
+            return (double)(_cuts[index].Y - transformedBaseLineStart.Y) / ((double)(CoinBottomLeft.Y - CoinTopRight.Y) / CoinDiameter);
         }
     }
 
