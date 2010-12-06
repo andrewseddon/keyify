@@ -39,7 +39,7 @@ namespace Keyify
         }
 
         public Image<Bgr, byte> GetInputImage()
-        {
+        { 
             // Make a copy and return as we dont want anything messing around with our image
             return _inputImage;//.Copy();
         }
@@ -64,9 +64,7 @@ namespace Keyify
                 CalculateCutPositions();
 
                 if (OnTransformedImageChanged != null)
-                {
                     OnTransformedImageChanged(this, EventArgs.Empty);
-                }
 
                 _baseLineHasChanged = false;
             }
@@ -79,39 +77,41 @@ namespace Keyify
             set
             {
                 _baseLineStart = value;
-
-                PointF center = new PointF(_inputImage.Width * 0.5f, _inputImage.Height * 0.5f);
-                RotationMatrix2D<float> rotationMatrix = new RotationMatrix2D<float>(center, -_rotationAngle, 1);
-                transformedBaseLineStart = new Point(_baseLineStart.X, _baseLineStart.Y);
-                PointF[] p = new PointF[] { new PointF(value.X, value.Y) };
-                rotationMatrix.RotatePoints(p);
-                transformedBaseLineStart = new Point((int)p[0].X, (int)p[0].Y);
-
-                CalculateCutPositions();
                 _baseLineHasChanged = true;
 
+                CalculateCutPositions();
+                CalculateTransformedBaseLines();
+                
                 if (OnMarkupChanged!=null)
                     OnMarkupChanged(this, EventArgs.Empty);
                 if (OnTransformedImageChanged != null)
                     OnTransformedImageChanged(this, EventArgs.Empty);    
             }   
         }
+
+        private void CalculateTransformedBaseLines()
+        {
+            PointF center = new PointF(_inputImage.Width * 0.5f, _inputImage.Height * 0.5f);
+            _rotationAngle = 180.0 - Math.Atan2((_baseLineStart.Y - _baseLineEnd.Y), (_baseLineStart.X - _baseLineEnd.X)) / Math.PI * 180;
+            RotationMatrix2D<float> rotationMatrix = new RotationMatrix2D<float>(center, -_rotationAngle, 1);
+
+            PointF[] p = new PointF[] { new PointF(_baseLineStart.X, _baseLineStart.Y) ,
+                new PointF(BaseLineEnd.X, BaseLineEnd.Y)};
+            rotationMatrix.RotatePoints(p);
+            transformedBaseLineStart = new Point((int)p[0].X, (int)p[0].Y);
+            transformedBaseLineEnd = new Point((int)p[1].X, (int)p[1].Y);
+        }
+
         public Point BaseLineEnd
         {
             get { return _baseLineEnd; }
             set 
             { 
                 _baseLineEnd = value;
-
-                PointF center = new PointF(_inputImage.Width * 0.5f, _inputImage.Height * 0.5f);
-                RotationMatrix2D<float> rotationMatrix = new RotationMatrix2D<float>(center, -_rotationAngle, 1);
-                transformedBaseLineEnd = new Point(_baseLineEnd.X, _baseLineEnd.Y);
-                PointF[] p = new PointF[] { new PointF(value.X, value.Y) };
-                rotationMatrix.RotatePoints(p);
-                transformedBaseLineEnd = new Point((int)p[0].X, (int)p[0].Y);
-
                 _baseLineHasChanged = true;
 
+                CalculateTransformedBaseLines();
+             
                 if (OnMarkupChanged != null)
                     OnMarkupChanged(this, EventArgs.Empty);
                     //OnTransformedImageChanged(this, EventArgs.Empty);

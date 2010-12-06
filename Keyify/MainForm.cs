@@ -6,6 +6,7 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using System.IO;
 
 using Emgu.CV;
 using Emgu.CV.Structure;
@@ -37,8 +38,8 @@ namespace Keyify
             _model.OnTransformedImageChanged += new ImageChangedEventHandler(_model_OnTransformedImageChanged);
 
             // "F:\\Projects\\Keyify\\data\\iphone\\peterkey1.JPG"
-            // "C:\\Users\\Andy\\Desktop\\SDPullups.jpg"
-            _model.LoadInput("F:\\Projects\\Keyify\\data\\iphone\\IMG_0114.JPG"); 
+            _model.LoadInput("C:\\Users\\Andy\\Desktop\\SDPullups.jpg");  
+            //_model.LoadInput("F:\\Projects\\Keyify\\data\\iphone\\IMG_0114.JPG"); 
         }
 
         void _model_OnTransformedImageChanged(object sender, EventArgs e)
@@ -294,6 +295,11 @@ namespace Keyify
             }
         }
 
-        
+        private void saveToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            FileStream fs = new FileStream("1.xml", FileMode.Create);
+            System.Xml.Serialization.XmlSerializer x = new System.Xml.Serialization.XmlSerializer(_model.GetType());
+            x.Serialize(fs, _model);
+        }        
     }
 }
