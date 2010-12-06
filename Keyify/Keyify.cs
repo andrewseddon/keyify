@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Drawing;
+using System.IO;
+
 using Emgu.CV;
 using Emgu.CV.Structure;
 
@@ -17,25 +19,88 @@ namespace Keyify
         public event ImageChangedEventHandler OnTransformedImageChanged;
         public event MarkupChangedEventHandler OnMarkupChanged;
 
+        private string _inputImageFileName;
+
         private Image<Bgr, byte> _inputImage;
+        public Image<Bgr, byte>  InputImage
+        {
+            get { return _inputImage; }
+            set
+            {
+                _inputImage = value;
+                _transformedImage = _inputImage.Copy();
+                OnInputImageChanged(this, EventArgs.Empty);     
+            }
+        }
+
         private Image<Bgr, byte> _transformedImage;
+        public Image<Bgr, byte> TransformedImage
+        {
+            get { return _transformedImage; }
+            set
+            {
+                _transformedImage = value;
+                OnTransformedImageChanged(this, EventArgs.Empty);
+            }
+        }
 
         private double _rotationAngle = 0;
 
         bool _baseLineHasChanged = true;
 
+        public Key _key = new Key();
+
         public Keyify()
         {
             // Setup some defaults
-            NumberOfCuts = 5;
+            NumberOfCuts = 5; 
+        }
+
+        public void SaveXml(string filename)
+        {
+            _key._filename = _inputImageFileName;
+            _key._keyCode = "";
+            _key._baseLineStart = BaseLineStart;
+            _key._baseLineEnd = BaseLineEnd;
+            _key._cuts = _cuts;
+            _key._coinBottomLeft = CoinBottomLeft;
+            _key._coinTopRight = CoinTopRight;
+            //_measuredCuts = new Point[20];
+
+            FileStream fs = new FileStream(filename, FileMode.Create);
+            System.Xml.Serialization.XmlSerializer x = new System.Xml.Serialization.XmlSerializer(_key.GetType());
+            x.Serialize(fs, _key);
+            fs.Close();
+        }
+
+        public void LoadXml(string filename)
+        {
+                  FileStream fs = new FileStream(filename, FileMode.Open);
+            System.Xml.Serialization.XmlSerializer x = new System.Xml.Serialization.XmlSerializer(_key.GetType());
+            _key = (Key)x.Deserialize(fs);
+            fs.Close();
+
+            LoadInput(_key._filename);
+            //_key._keyCode = "";
+            BaseLineEnd = _key._baseLineEnd;
+            BaseLineStart = _key._baseLineStart; 
+            _cuts = _key._cuts;
+            CoinBottomLeft = _key._coinBottomLeft;
+            CoinTopRight = _key._coinTopRight;
+            //_measuredCuts = new Point[20];               
         }
 
         public void LoadInput(string path)
         {
+            _inputImageFileName = path;
             _inputImage = new Image<Bgr, byte>(path);
             _transformedImage = _inputImage.Copy();
-            OnInputImageChanged(this, EventArgs.Empty);
-            
+
+            // Reset position of cuts
+            _cuts[0] = new Point(_inputImage.Width / 2, _inputImage.Height / 2);
+            //CalculateCutPositions();
+
+            OnInputImageChanged(this, EventArgs.Empty);     
         }
 
         public Image<Bgr, byte> GetInputImage()
@@ -58,11 +123,6 @@ namespace Keyify
                 _rotationAngle = 180.0 - Math.Atan2((_baseLineStart.Y - _baseLineEnd.Y), (_baseLineStart.X - _baseLineEnd.X)) / Math.PI * 180;
                 _transformedImage = _inputImage.Copy().Rotate(_rotationAngle, new Bgr(Color.Black));
 
-                // Reset position of cuts
-                _cuts[0] = new Point(_baseLineStart.X + 100, _baseLineStart.Y - 100);
-
-                CalculateCutPositions();
-
                 if (OnTransformedImageChanged != null)
                     OnTransformedImageChanged(this, EventArgs.Empty);
 
@@ -70,7 +130,9 @@ namespace Keyify
             }
         }
 
-        private Point _baseLineStart, _baseLineEnd;
+        private Point _baseLineStart = new Point(0,0);
+        private Point _baseLineEnd = new Point(0,0);
+
         public Point BaseLineStart
         {
             get { return _baseLineStart;  }
@@ -120,8 +182,8 @@ namespace Keyify
             }
         }
 
-        public Point transformedBaseLineStart;
-        public Point transformedBaseLineEnd;
+        public Point transformedBaseLineStart = new Point();
+        public Point transformedBaseLineEnd = new Point();
 
         //private List<Point> _cuts = new List<Point>();
         private Point[] _cuts = new Point[20];
@@ -223,15 +285,29 @@ namespace Keyify
     /// <summary>
     /// Parameters for a single key
     /// </summary>
-    class Key
+    public class Key
     {
         // User given name for the key
-        public string Name;
+        public string _name;
+
+        // Input image filename
+        public string _filename;
 
         // Any manufactuer info stamped on the key
-        public string KeyCode;
+        public string _keyCode;
 
-        // Cut positions are given relative to the baseline
-        List<PointF> _cutPositions = new List<PointF>();
+        //
+        // Markup
+        //
+        public Point _baseLineStart, _baseLineEnd;
+        public Point[] _cuts; // = new Point[20];
+        public Point _coinBottomLeft;
+        public Point _coinTopRight;
+
+
+        //
+        // Micrometer
+        //
+        public Point[] _measuredCuts = new Point[20];
     }
 }

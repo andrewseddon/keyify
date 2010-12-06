@@ -20,6 +20,8 @@ namespace Keyify
         private Image<Bgr, Byte> _inputImage;
         private Image<Bgr, Byte> _inputMarkup;
         private Image<Bgr, Byte> _transformedMarkup;
+
+        private string _inputImageFilename;
         
         enum EMarkupType { Baseline, CoinVertical, CoinHorizontal};
         EMarkupType _markupMode;
@@ -38,7 +40,10 @@ namespace Keyify
             _model.OnTransformedImageChanged += new ImageChangedEventHandler(_model_OnTransformedImageChanged);
 
             // "F:\\Projects\\Keyify\\data\\iphone\\peterkey1.JPG"
-            _model.LoadInput("C:\\Users\\Andy\\Desktop\\SDPullups.jpg");  
+            _inputImageFilename = "C:\\Users\\Andy\\Desktop\\SDPullups.jpg";
+            _model.LoadInput(_inputImageFilename);
+            if (File.Exists(Path.ChangeExtension(_inputImageFilename, ".xml")))
+                _model.LoadXml(Path.ChangeExtension(_inputImageFilename, ".xml"));
             //_model.LoadInput("F:\\Projects\\Keyify\\data\\iphone\\IMG_0114.JPG"); 
         }
 
@@ -248,10 +253,12 @@ namespace Keyify
         private void tabControl1_DragDrop(object sender, DragEventArgs e)
         {
             string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-            foreach (string file in files)
-            {
-                _model.LoadInput(file);
-            }
+
+            _inputImageFilename = files[0];
+            _model.LoadInput(_inputImageFilename);
+
+            if (File.Exists(Path.ChangeExtension(_inputImageFilename, ".xml")))
+                _model.LoadXml(Path.ChangeExtension(_inputImageFilename, ".xml"));
         }
 
         private void tabControl1_DragEnter(object sender, DragEventArgs e)
@@ -297,9 +304,13 @@ namespace Keyify
 
         private void saveToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            FileStream fs = new FileStream("1.xml", FileMode.Create);
-            System.Xml.Serialization.XmlSerializer x = new System.Xml.Serialization.XmlSerializer(_model.GetType());
-            x.Serialize(fs, _model);
+            _model.SaveXml(Path.ChangeExtension(_inputImageFilename, ".xml"));
+        }
+
+        private void openToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (File.Exists(Path.ChangeExtension(_inputImageFilename, ".xml")))
+                _model.LoadXml(Path.ChangeExtension(_inputImageFilename, ".xml"));
         }        
     }
 }
