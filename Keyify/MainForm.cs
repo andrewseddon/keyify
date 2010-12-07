@@ -39,12 +39,12 @@ namespace Keyify
             _model.OnMarkupChanged += new MarkupChangedEventHandler(_model_OnMarkupChanged);
             _model.OnTransformedImageChanged += new ImageChangedEventHandler(_model_OnTransformedImageChanged);
 
-            // "F:\\Projects\\Keyify\\data\\iphone\\peterkey1.JPG"
-            _inputImageFilename = "C:\\Users\\Andy\\Desktop\\SDPullups.jpg";
+            //_inputImageFilename = "F:\\Projects\\Keyify\\data\\iphone\\peterkey1.JPG";
+            _inputImageFilename = "F:\\Projects\\Keyify\\data\\iphone\\IMG_0114.JPG";
+            //_inputImageFilename = "C:\\Users\\Andy\\Desktop\\SDPullups.jpg";
             _model.LoadInput(_inputImageFilename);
             if (File.Exists(Path.ChangeExtension(_inputImageFilename, ".xml")))
                 _model.LoadXml(Path.ChangeExtension(_inputImageFilename, ".xml"));
-            //_model.LoadInput("F:\\Projects\\Keyify\\data\\iphone\\IMG_0114.JPG"); 
         }
 
         void _model_OnTransformedImageChanged(object sender, EventArgs e)
@@ -56,7 +56,15 @@ namespace Keyify
         {
             // Paint all the markup
             _inputMarkup.SetValue(new Bgr(Color.Black));
-            _inputMarkup.Draw(new Cross2DF(new PointF(_model.BaseLineStart.X, _model.BaseLineStart.Y), 20, 100), new Bgr(Color.Green), 3);
+
+            //_inputMarkup.Draw(new Cross2DF(new PointF(_model.BaseLineStart.X, _model.BaseLineStart.Y), 20, 200), new Bgr(Color.Green), 3);
+            double rotationAngle = Math.Atan2((_model.BaseLineStart.Y - _model.BaseLineEnd.Y), (_model.BaseLineStart.X - _model.BaseLineEnd.X));// / Math.PI * 180;
+            Point start = new Point((int)(_model.BaseLineStart.X + (300 * Math.Sin(rotationAngle))), (int)(_model.BaseLineStart.Y - (300 * Math.Cos(rotationAngle))));
+            Point end = new Point((int)(_model.BaseLineStart.X - (300 * Math.Sin(rotationAngle))), (int)(_model.BaseLineStart.Y + (300 * Math.Cos(rotationAngle))));
+            _inputMarkup.Draw(new LineSegment2D(start, end), new Bgr(Color.Green), 3);
+
+            _inputMarkup.Draw(new LineSegment2D(_model.BaseLineStart, _model.BaseLineEnd), new Bgr(Color.Blue), 3);
+                    
             if ((_model.BaseLineStart.X != 0) && (_model.BaseLineEnd.X != 0))
             {
                 _inputMarkup.Draw(new LineSegment2D(_model.BaseLineStart, _model.BaseLineEnd), new Bgr(Color.Blue), 3);
@@ -91,7 +99,7 @@ namespace Keyify
                     new Bgr(Color.Green), 3);
             */
 
-            _transformedMarkup.Draw(new Cross2DF(new PointF(_model.transformedBaseLineStart.X, _model.transformedBaseLineStart.Y), 20, 100), new Bgr(Color.Green), 3);
+            _transformedMarkup.Draw(new Cross2DF(new PointF(_model.transformedBaseLineStart.X, _model.transformedBaseLineStart.Y), 20, 600), new Bgr(Color.Green), 3);
             _transformedMarkup.Draw(new LineSegment2D(_model.transformedBaseLineStart, _model.transformedBaseLineEnd), new Bgr(Color.Blue), 3);
 
              transformedDisplay.Image = _model.GetTransformedImage() + _transformedMarkup; 
@@ -236,6 +244,8 @@ namespace Keyify
             _model.CalculateTransform();
 
             GenerateStats();
+
+            this.propertyGrid1.SelectedObject = _model._key;
         }
 
         private void GenerateStats()

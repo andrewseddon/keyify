@@ -300,8 +300,21 @@ namespace Keyify
         // Markup
         //
         public Point _baseLineStart, _baseLineEnd;
+
         public Point[] _cuts; // = new Point[20];
+        public Point[] Cuts 
+        {
+            get { return _cuts; }
+            set { _cuts = value; }
+        }
+
         public Point _coinBottomLeft;
+        public Point CoinBottomLeft
+        {
+            get { return _coinBottomLeft; }
+            set { _coinBottomLeft = value; }
+        }
+
         public Point _coinTopRight;
 
 

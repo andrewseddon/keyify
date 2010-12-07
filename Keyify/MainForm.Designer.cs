@@ -42,6 +42,7 @@
             this.transformedDisplay = new Emgu.CV.UI.ImageBox();
             this.tabPage3 = new System.Windows.Forms.TabPage();
             this.statsTextBox = new System.Windows.Forms.RichTextBox();
+            this.propertyGrid1 = new System.Windows.Forms.PropertyGrid();
             ((System.ComponentModel.ISupportInitialize)(this.inputDisplay)).BeginInit();
             this.menuStrip1.SuspendLayout();
             this.statusStrip1.SuspendLayout();
@@ -89,7 +90,7 @@
             // 
             this.openToolStripMenuItem.Name = "openToolStripMenuItem";
             this.openToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.O)));
-            this.openToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.openToolStripMenuItem.Size = new System.Drawing.Size(146, 22);
             this.openToolStripMenuItem.Text = "Open";
             this.openToolStripMenuItem.Click += new System.EventHandler(this.openToolStripMenuItem_Click);
             // 
@@ -97,7 +98,7 @@
             // 
             this.saveToolStripMenuItem.Name = "saveToolStripMenuItem";
             this.saveToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.S)));
-            this.saveToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.saveToolStripMenuItem.Size = new System.Drawing.Size(146, 22);
             this.saveToolStripMenuItem.Text = "Save";
             this.saveToolStripMenuItem.Click += new System.EventHandler(this.saveToolStripMenuItem_Click);
             // 
@@ -173,6 +174,7 @@
             // 
             // tabPage3
             // 
+            this.tabPage3.Controls.Add(this.propertyGrid1);
             this.tabPage3.Controls.Add(this.statsTextBox);
             this.tabPage3.Location = new System.Drawing.Point(4, 22);
             this.tabPage3.Name = "tabPage3";
@@ -189,9 +191,19 @@
             this.statsTextBox.Font = new System.Drawing.Font("Verdana", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.statsTextBox.Location = new System.Drawing.Point(21, 28);
             this.statsTextBox.Name = "statsTextBox";
-            this.statsTextBox.Size = new System.Drawing.Size(867, 226);
+            this.statsTextBox.Size = new System.Drawing.Size(592, 226);
             this.statsTextBox.TabIndex = 0;
             this.statsTextBox.Text = "";
+            // 
+            // propertyGrid1
+            // 
+            this.propertyGrid1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+                        | System.Windows.Forms.AnchorStyles.Left)
+                        | System.Windows.Forms.AnchorStyles.Right)));
+            this.propertyGrid1.Location = new System.Drawing.Point(619, 28);
+            this.propertyGrid1.Name = "propertyGrid1";
+            this.propertyGrid1.Size = new System.Drawing.Size(283, 226);
+            this.propertyGrid1.TabIndex = 1;
             // 
             // MainForm
             // 
@@ -236,6 +248,7 @@
         private System.Windows.Forms.ToolStripMenuItem saveToolStripMenuItem;
         private System.Windows.Forms.TabPage tabPage3;
         private System.Windows.Forms.RichTextBox statsTextBox;
+        private System.Windows.Forms.PropertyGrid propertyGrid1;
 
 
     }
