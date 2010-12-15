@@ -10,6 +10,7 @@ using System.IO;
 
 using Emgu.CV;
 using Emgu.CV.Structure;
+using Emgu.CV.UI;
 
 namespace Keyify
 {
@@ -26,25 +27,36 @@ namespace Keyify
         enum EMarkupType { Baseline, CoinVertical, CoinHorizontal};
         EMarkupType _markupMode;
 
-
-        public MainForm()
+        public MainForm(string[] args)
         {
             InitializeComponent(); 
-            this.WindowState = FormWindowState.Maximized;
+            //this.WindowState = FormWindowState.Maximized;
             inputDisplay.SetZoomScale(0.5, new Point(0, 0));
             transformedDisplay.SetZoomScale(0.5, new Point(0, 0));
+            calibrationDisplay.SetZoomScale(0.25, new Point(0, 0));
 
 
             _model.OnInputImageChanged += new ImageChangedEventHandler(_model_OnInputImageChanged);
             _model.OnMarkupChanged += new MarkupChangedEventHandler(_model_OnMarkupChanged);
             _model.OnTransformedImageChanged += new ImageChangedEventHandler(_model_OnTransformedImageChanged);
+            _model.OnCalibrationImageChanged += new ImageChangedEventHandler(_model_OnCalibrationImageChanged);
 
-            //_inputImageFilename = "F:\\Projects\\Keyify\\data\\iphone\\peterkey1.JPG";
-            _inputImageFilename = "F:\\Projects\\Keyify\\data\\iphone\\IMG_0114.JPG";
-            //_inputImageFilename = "C:\\Users\\Andy\\Desktop\\SDPullups.jpg";
-            _model.LoadInput(_inputImageFilename);
-            if (File.Exists(Path.ChangeExtension(_inputImageFilename, ".xml")))
-                _model.LoadXml(Path.ChangeExtension(_inputImageFilename, ".xml"));
+            if (args.Length > 0)
+            {
+                LoadFile(args[0]);
+            }
+            else
+            {
+                //LoadFile("F:\\Projects\\Keyify\\data\\iphone\\IMG_0114.JPG");
+                //LoadFile("F:\\Projects\\Keyify\\data\\t2\\IMG_0171.JPG");
+                //LoadFile("F:\\Projects\\Keyify\\data\\cal1\\IMG_0169.JPG");
+                LoadFile("F:\\Projects\\Keyify\\data\\cal1\\IMG_0169.JPG"); 
+            }
+        }
+
+        void _model_OnCalibrationImageChanged(object sender, EventArgs e)
+        {
+            calibrationDisplay.Image = _model.CalibrationImage;
         }
 
         void _model_OnTransformedImageChanged(object sender, EventArgs e)
@@ -197,11 +209,11 @@ namespace Keyify
 
             // F1 to F3 select tab
             if (e.KeyCode == Keys.F1)
-                tabControl1.SelectedIndex = 0;
+                tabControl.SelectedIndex = 0;
             if (e.KeyCode == Keys.F2)
-                tabControl1.SelectedIndex = 1;
+                tabControl.SelectedIndex = 1;
             if (e.KeyCode == Keys.F3)
-                tabControl1.SelectedIndex = 2;
+                tabControl.SelectedIndex = 2;
 
             // Numbers 1 and two switch between marking up the baseline and coin
             if (e.KeyCode.ToString() == "D1")
@@ -245,7 +257,12 @@ namespace Keyify
 
             GenerateStats();
 
+            _model.CalculateErrorReport();
             this.propertyGrid1.SelectedObject = _model._key;
+            if (_model.HasMeasurementError)
+                propertyGrid1.BackColor = Color.Red;
+            else
+                propertyGrid1.BackColor = Color.Green;
         }
 
         private void GenerateStats()
@@ -264,11 +281,26 @@ namespace Keyify
         {
             string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
 
-            _inputImageFilename = files[0];
-            _model.LoadInput(_inputImageFilename);
+            LoadFile(files[0]);      
+        }
 
-            if (File.Exists(Path.ChangeExtension(_inputImageFilename, ".xml")))
-                _model.LoadXml(Path.ChangeExtension(_inputImageFilename, ".xml"));
+        private void LoadFile(string path)
+        {
+            // We can drag/drop key files or images, find out which by extension
+            if (Path.GetExtension(path) == Keyify.KeyFileExtenstion)
+            {
+                _model.LoadXml(Path.ChangeExtension(path, Keyify.KeyFileExtenstion));
+            }
+            else if ((Path.GetExtension(path) == ".jpg") || (Path.GetExtension(path) == ".JPG"))
+            {
+                _inputImageFilename = path;
+                _model.LoadInput(_inputImageFilename);
+
+                if (File.Exists(Path.ChangeExtension(_inputImageFilename, Keyify.KeyFileExtenstion)))
+                    _model.LoadXml(Path.ChangeExtension(_inputImageFilename, Keyify.KeyFileExtenstion));
+            }
+
+            tabControl.SelectedIndex = 0;
         }
 
         private void tabControl1_DragEnter(object sender, DragEventArgs e)
@@ -314,13 +346,38 @@ namespace Keyify
 
         private void saveToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            _model.SaveXml(Path.ChangeExtension(_inputImageFilename, ".xml"));
+            _model.SaveXml(Path.ChangeExtension(_inputImageFilename, Keyify.KeyFileExtenstion));
         }
 
         private void openToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (File.Exists(Path.ChangeExtension(_inputImageFilename, ".xml")))
-                _model.LoadXml(Path.ChangeExtension(_inputImageFilename, ".xml"));
+            if (File.Exists(Path.ChangeExtension(_inputImageFilename, Keyify.KeyFileExtenstion)))
+                _model.LoadXml(Path.ChangeExtension(_inputImageFilename, Keyify.KeyFileExtenstion));
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            _model.CalibrateCamera("F:\\Projects\\Keyify\\data\\cal1\\");
+
+            /*
+            ImageViewer viewer = new ImageViewer(); //create an image viewer
+            Capture capture = new Capture("F:\\Projects\\Keyify\\data\\cal1\\IMG_0209.MOV"); //create a camera captue
+            Application.Idle += new EventHandler(delegate(object sender1, EventArgs f)
+            {  //run this until application closed (close button click on image viewer)
+                viewer.Image = capture.QueryFrame(); //draw the image obtained from camera
+            });
+            viewer.ShowDialog(); //show the image viewer
+            */
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+        
+        }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            _model.CorrectCameraDistortion("F:\\Projects\\Keyify\\data\\cal1" + "\\1.calibration");
         }        
     }
 }

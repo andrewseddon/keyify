@@ -15,8 +15,14 @@ namespace Keyify
 
     class Keyify
     {
+        // How much error in measurement of cut depth are we going to allow, research indiciates <0.5mm
+        // should produce a working key
+        const double MaxPermissableCutDepthError = 0.25;
+        public const string KeyFileExtenstion = ".keyify";
+
         public event ImageChangedEventHandler OnInputImageChanged;
         public event ImageChangedEventHandler OnTransformedImageChanged;
+        public event ImageChangedEventHandler OnCalibrationImageChanged;
         public event MarkupChangedEventHandler OnMarkupChanged;
 
         private string _inputImageFileName;
@@ -44,9 +50,23 @@ namespace Keyify
             }
         }
 
+        private Image<Bgr, byte> _calibrationImage;
+        public Image<Bgr, byte>  CalibrationImage
+        {
+            get { return _calibrationImage; }
+        }
+
+        IntrinsicCameraParameters _intrinsicParameters = new IntrinsicCameraParameters();
+
         private double _rotationAngle = 0;
 
         bool _baseLineHasChanged = true;
+
+        private bool _hasMeasurementError = false;
+        public bool HasMeasurementError
+        {
+            get { return _hasMeasurementError; }
+        }
 
         public Key _key = new Key();
 
@@ -59,7 +79,7 @@ namespace Keyify
         public void SaveXml(string filename)
         {
             _key._filename = _inputImageFileName;
-            _key._keyCode = "";
+            //_key._keyCode = "";
             _key._baseLineStart = BaseLineStart;
             _key._baseLineEnd = BaseLineEnd;
             _key._cuts = _cuts;
@@ -94,6 +114,7 @@ namespace Keyify
         {
             _inputImageFileName = path;
             _inputImage = new Image<Bgr, byte>(path);
+            //_inputImage = CorrectCameraDistortion(path + "\\1.calibration", _inputImage);
             _transformedImage = _inputImage.Copy();
 
             // Reset position of cuts
@@ -106,11 +127,202 @@ namespace Keyify
         public Image<Bgr, byte> GetInputImage()
         { 
             // Make a copy and return as we dont want anything messing around with our image
+            _inputImage._EqualizeHist();
             return _inputImage;//.Copy();
         }
 
+        public void CorrectCameraDistortion(string calibrationFile)
+        {
+             FileStream fs = new FileStream(calibrationFile, FileMode.Open);
+             System.Xml.Serialization.XmlSerializer x = new System.Xml.Serialization.XmlSerializer(_intrinsicParameters.GetType());
+             _intrinsicParameters = (IntrinsicCameraParameters)x.Deserialize(fs);
+             fs.Close();
+
+             Matrix<float> mapx = new Matrix<float>(new Size(_inputImage.Width, _inputImage.Height));
+             Matrix<float> mapy = new Matrix<float>(new Size(_inputImage.Width, _inputImage.Height));
+             _intrinsicParameters.InitUndistortMap(_inputImage.Width, _inputImage.Height, out mapx, out mapy);  
+
+             Image<Bgr, byte> img = _inputImage.Clone();
+             CvInvoke.cvRemap(_inputImage.Ptr, img.Ptr, mapx.Ptr, mapy.Ptr, 8 /*(int)INTER.CV_INTER_LINEAR | (int)WARP.CV_WARP_FILL_OUTLIERS*/, new MCvScalar(0));
+
+             _inputImage = img;
+
+             if(OnInputImageChanged!=null)
+                OnInputImageChanged(this, EventArgs.Empty);
+        }
+
+        public void CalibrateCamera(string directory)
+        {
+            DirectoryInfo di = new DirectoryInfo(directory);
+            FileInfo[] rgFiles = di.GetFiles("*.jpg");
+
+            Size chessboardSize = new Size(5, 8);
+            int successes = 0;
+            int numberOfCorners = chessboardSize.Width * chessboardSize.Height;
+            int chessboard_num = rgFiles.Length;
+            int counter = 0;
+
+            MCvPoint3D32f[][] object_points1 = new MCvPoint3D32f[chessboard_num][];
+            PointF[][] image_points1 = new PointF[chessboard_num][];
+
+             // Process all chessboard images in this directory
+             foreach(FileInfo fi in rgFiles)
+             {
+                // Find all the corners on a given chessboard image
+                PointF[] corners;
+                _calibrationImage = new Image<Bgr, byte>(fi.FullName);
+                Image<Gray, byte> grayImage = _calibrationImage.Convert<Gray, byte>();
+                bool patternFound = CameraCalibration.FindChessboardCorners(grayImage, new Size(5, 8), Emgu.CV.CvEnum.CALIB_CB_TYPE.ADAPTIVE_THRESH, out corners);
+                // grayImage.FindCornerSubPix(new PointF[][] { corners }, new Size(10, 10), new Size(-1, -1), new MCvTermCriteria(0.05));
+                CvInvoke.cvDrawChessboardCorners(_calibrationImage.Ptr, chessboardSize, corners, corners.Length, patternFound ? 1 : 0);
+
+                MCvFont font = new MCvFont(Emgu.CV.CvEnum.FONT.CV_FONT_HERSHEY_PLAIN, 5, 5);
+                _calibrationImage.Draw(counter++.ToString() + ":" + fi.Name + " " + patternFound.ToString(), ref font , new Point(0, 200), new Bgr(Color.Red)); 
+
+                if (OnCalibrationImageChanged != null)
+                    OnCalibrationImageChanged(this, EventArgs.Empty);
+
+                // TODO bit of a hack so that the display updates, should probably do this in a BackgroundWorker
+                System.Windows.Forms.Application.DoEvents();
+
+                if (patternFound && (corners.Length == (chessboardSize.Height * chessboardSize.Width)))
+                {
+                    object_points1[successes] = new MCvPoint3D32f[numberOfCorners];
+                    for (int j = 0; j < numberOfCorners; j++)
+                    {
+                        image_points1[successes] = corners;
+                        object_points1[successes][j].x = j / chessboardSize.Width;
+                        object_points1[successes][j].y = j % chessboardSize.Width;
+                        object_points1[successes][j].z = 0.0f;
+                    }
+                    successes++;
+                }
+             }
+
+             // TODO Hack to get arrays of the correct length, should probably use a collection
+             MCvPoint3D32f[][] object_points = new MCvPoint3D32f[successes][];
+             PointF[][] image_points = new PointF[successes][];
+             for (int i = 0; i < successes; i++)
+             {
+                 object_points[i] = object_points1[i];
+                 image_points[i] = image_points1[i];
+             }
+
+
+             _intrinsicParameters = new IntrinsicCameraParameters();
+             ExtrinsicCameraParameters[] extrinsicParameters = new ExtrinsicCameraParameters[successes];
+             for (int i = 0; i < successes; i++)
+                 extrinsicParameters[i] = new ExtrinsicCameraParameters();
+
+             CameraCalibration.CalibrateCamera(object_points, image_points, new Size(_calibrationImage.Width, _calibrationImage.Height), _intrinsicParameters,Emgu.CV.CvEnum.CALIB_TYPE.DEFAULT, out extrinsicParameters);
+
+             FileStream fs = new FileStream(directory + "\\1.calibration", FileMode.Create);
+             System.Xml.Serialization.XmlSerializer x = new System.Xml.Serialization.XmlSerializer(_intrinsicParameters.GetType());
+             x.Serialize(fs, _intrinsicParameters);
+             fs.Close();
+             
+             CorrectCameraDistortion(directory + "\\1.calibration");
+             
+             //System.Windows.Forms.MessageBox.Show("Images Used: " + object_points.Length.ToString() + "\n\rIntrinsic Parameters: " + _intrinsicParameters.IntrinsicMatrix.Data.ToString(), "Finished"); 
+        }
+
+#if false
+        void doCameraCalibration()
+        {
+            int  successes, corners_num;
+            corners_num = CHESSBOARD_HEIGHT*CHESSBOARD_WIDTH;
+            successes = 0;
+            int count = 0;
+            int board_dt = 20; //waiting 20 frame between any chessboard view acquisition
+            int chessboard_num = 10; //chessboards number
+
+            
+            MCvPoint3D32f[][] object_points = new MCvPoint3D32f[chessboard_num][];
+            PointF[][] image_points = new PointF[chessboard_num][];
+      
+            IntrinsicCameraParameters intrinsic_param;
+            ExtrinsicCameraParameters [] extrinsic_param;
+            Image<Bgr, byte> chessboard = _capture.QueryFrame();
+            _chessboard_gray = chessboard.Convert<Gray, byte>();
+           
+            setFormSize(2, CAMERA_CALIBRATION);
+           
+
+            while (successes < chessboard_num)
+            {
+                if ((count++ % board_dt) == 0)  //aspetto 20 frame tra l'acquisizione di una scacchiera e la successiva
+                {
+                    if (!CameraCalibration.FindChessboardCorners(_chessboard_gray, new Size(CHESSBOARD_WIDTH, CHESSBOARD_HEIGHT), CALIB_CB_TYPE.DEFAULT, out _chess_corners))
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        
+
+                        CameraCalibration.DrawChessboardCorners(_chessboard_gray, new Size(CHESSBOARD_WIDTH, CHESSBOARD_HEIGHT), _chess_corners, true);
+
+                        _chessboard_gray.FindCornerSubPix(new PointF[][] { _chess_corners }, new Size(10, 10), new Size(-1, -1), new MCvTermCriteria(300, 0.01));
+
+                        _bitmap_imgs[0] = chessboard.ToBitmap();
+                        _bitmap_imgs[1] = _chessboard_gray.ToBitmap();
+                        refreshVideo(2);
+
+                        //aggiungo le board rilevate corretamente ai dati
+                        if (_chess_corners.Length == corners_num)
+                        {
+                            object_points[successes] = new MCvPoint3D32f[corners_num];
+                            for (int j = 0; j < corners_num; j++)
+                            {
+                                image_points[successes] = _chess_corners;
+                                object_points[successes][j].x = j / CHESSBOARD_WIDTH;
+                                object_points[successes][j].y = j % CHESSBOARD_WIDTH;
+                                object_points[successes][j].z = 0.0f;
+                            }
+
+                            successes++;
+                        }
+                    }
+                    
+                }
+                chessboard = _capture.QueryFrame();
+                _chessboard_gray = chessboard.Convert<Gray, byte>();
+            }
+            MessageBox.Show(successes.ToString() + " chessboard founded", "Searching chessboards result" );
+
+            #region Preparo la matrice intrinseca e calibro la telecamera
+
+            intrinsic_param = new IntrinsicCameraParameters();
+            extrinsic_param = new ExtrinsicCameraParameters[successes];
+            for (int i = 0; i < successes; i++)
+                extrinsic_param[i] = new ExtrinsicCameraParameters();
+
+            CameraCalibration.CalibrateCamera(object_points, image_points, new Size(IMAGE_WIDTH, IMAGE_HEIGHT), intrinsic_param, CALIB_TYPE.DEFAULT, out extrinsic_param);
+            
+            #endregion
+
+
+            #region Mostro le immagini non distorte
+            Matrix<float> mapx = new Matrix<float>(new Size(IMAGE_WIDTH, IMAGE_HEIGHT));
+            Matrix<float> mapy = new Matrix<float>(new Size(IMAGE_WIDTH, IMAGE_HEIGHT));
+
+            intrinsic_param.InitUndistortMap(IMAGE_WIDTH, IMAGE_HEIGHT, out mapx, out mapy);  //DA FINIRE
+
+            Image<Bgr, byte> img = chessboard.Clone();
+            CvInvoke.cvRemap(img.Ptr, chessboard.Ptr, mapx.Ptr, mapy.Ptr, 8 /*(int)INTER.CV_INTER_LINEAR | (int)WARP.CV_WARP_FILL_OUTLIERS*/, new MCvScalar(0));
+            _bitmap_imgs[2] = chessboard.ToBitmap();
+            
+            setFormSize(3, CAMERA_CALIBRATION);
+            refreshVideo(3);
+            #endregion
+        }
+#endif
+    
+ 
+
         public Image<Bgr, byte> GetTransformedImage()
         {
+            _transformedImage._EqualizeHist();
             return _transformedImage;//.Copy();
         }
 
@@ -195,8 +407,24 @@ namespace Keyify
                 _cuts[cutIndex].Y = depth;
             }
 
+            CalculateErrorReport();
+
             if (OnMarkupChanged != null)
                 OnMarkupChanged(this, EventArgs.Empty);
+        }
+
+        public void CalculateErrorReport()
+        {
+            _hasMeasurementError = false;  
+
+            for (int i = 0; i < _numberOfCuts; i++)
+            {
+                _key.CalculatedCuts[i].Y = (float)GetCutRealDepth(i);
+                _key.CutError[i].X = _key.CalculatedCuts[i].X - _key.MeasuredCuts[i].X;
+                _key.CutError[i].Y = _key.CalculatedCuts[i].Y - _key.MeasuredCuts[i].Y;
+                if (Math.Abs(_key.CutError[i].Y) > MaxPermissableCutDepthError)
+                    _hasMeasurementError = true;
+            }
         }
 
         public Point GetCut(int cutIndex)
@@ -278,7 +506,7 @@ namespace Keyify
 
         public double GetCutRealDepth(int index)
         {
-            return (double)(_cuts[index].Y - transformedBaseLineStart.Y) / ((double)(CoinBottomLeft.Y - CoinTopRight.Y) / CoinDiameter);
+            return (double)Math.Abs((_cuts[index].Y - transformedBaseLineStart.Y) / ((double)(CoinBottomLeft.Y - CoinTopRight.Y) / CoinDiameter));
         }
     }
 
@@ -287,40 +515,107 @@ namespace Keyify
     /// </summary>
     public class Key
     {
+        public Key()
+        {
+        }
+
         // User given name for the key
         public string _name;
+        public string Name
+        {
+            get { return _name; }
+            set { _name = value; }
+        }
 
         // Input image filename
         public string _filename;
 
         // Any manufactuer info stamped on the key
         public string _keyCode;
+        public string KeyCode
+        {
+            get { return _keyCode; }
+            set { _keyCode = value; }
+        }
 
         //
         // Markup
         //
-        public Point _baseLineStart, _baseLineEnd;
+        public Point _baseLineStart;
+        public Point _baseLineEnd;
 
         public Point[] _cuts; // = new Point[20];
+        /*
         public Point[] Cuts 
         {
             get { return _cuts; }
             set { _cuts = value; }
         }
+         */
 
         public Point _coinBottomLeft;
+        /*
         public Point CoinBottomLeft
         {
             get { return _coinBottomLeft; }
             set { _coinBottomLeft = value; }
         }
+         * */
 
         public Point _coinTopRight;
 
 
+        public PointF[] _calculatedCuts = new PointF[20];
+        public PointF[] CalculatedCuts
+        {
+            get { return _calculatedCuts; }
+            set { _calculatedCuts = value; }
+        }
+
+   
         //
         // Micrometer
         //
-        public Point[] _measuredCuts = new Point[20];
+        public PointF[] _measuredCuts = new PointF[20];
+        public PointF[] MeasuredCuts
+        {
+            get { return _measuredCuts; }
+            set { _measuredCuts = value; }
+        }
+
+
+        public PointF[] _cutError = new PointF[20];
+        public PointF[] CutError
+        {
+            get { return _cutError; }
+            set { _cutError = value; }
+        }
+
     }
+
+    /*
+    public class Cut
+    {
+        public static readonly Cut Empty;
+
+        public Cut()
+        {
+            Position = 0;
+            Depth = 0;
+        }
+
+        public double _position = 0;
+        public double Position
+        {
+            get { return _position; }
+            set { _position = value; }
+        }
+        public double _depth = 0;
+        public double Depth
+        {
+            get { return _depth; }
+            set { _depth = value; }
+        }
+    }
+     */
 }
