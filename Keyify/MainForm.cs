@@ -275,6 +275,9 @@ namespace Keyify
                     "," + (_model.GetCut(i).Y - _model.transformedBaseLineStart.Y).ToString() +
                     "," + _model.GetCutRealDepth(i).ToString() + "\n\r";
             }
+            int coinError = Math.Abs(_model.CoinBottomLeft.X - _model.CoinTopRight.X) - Math.Abs(_model.CoinBottomLeft.Y - _model.CoinTopRight.Y);
+            statsTextBox.Text += "Coin Pixel Error: " + coinError.ToString() + "\n\r";
+
         }
 
         private void tabControl1_DragDrop(object sender, DragEventArgs e)

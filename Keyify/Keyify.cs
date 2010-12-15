@@ -226,99 +226,39 @@ namespace Keyify
              //System.Windows.Forms.MessageBox.Show("Images Used: " + object_points.Length.ToString() + "\n\rIntrinsic Parameters: " + _intrinsicParameters.IntrinsicMatrix.Data.ToString(), "Finished"); 
         }
 
-#if false
-        void doCameraCalibration()
+        public void Homography()
         {
-            int  successes, corners_num;
-            corners_num = CHESSBOARD_HEIGHT*CHESSBOARD_WIDTH;
-            successes = 0;
-            int count = 0;
-            int board_dt = 20; //waiting 20 frame between any chessboard view acquisition
-            int chessboard_num = 10; //chessboards number
+            PointF[] src = new PointF[] 
+            { 
+                new PointF(_coinBottomLeft.X, _coinBottomLeft.Y) ,
+                new PointF(_coinBottomLeft.X, _coinTopRight.Y) ,
+                new PointF(_coinTopRight.X, _coinTopRight.Y) ,
+                new PointF(_coinTopRight.X, _coinBottomLeft.Y) ,
+            };
 
+            /*
+            PointF[] dst = new PointF[] 
+            { 
+                new PointF(_coinBottomLeft.X, _coinBottomLeft.Y) ,
+                new PointF(_coinBottomLeft.X, _coinTopRight.Y) ,
+                new PointF(_coinTopRight.X, _coinTopRight.Y) ,
+                new PointF(_coinTopRight.X, _coinBottomLeft.Y) ,
+            };
+            */
             
-            MCvPoint3D32f[][] object_points = new MCvPoint3D32f[chessboard_num][];
-            PointF[][] image_points = new PointF[chessboard_num][];
-      
-            IntrinsicCameraParameters intrinsic_param;
-            ExtrinsicCameraParameters [] extrinsic_param;
-            Image<Bgr, byte> chessboard = _capture.QueryFrame();
-            _chessboard_gray = chessboard.Convert<Gray, byte>();
-           
-            setFormSize(2, CAMERA_CALIBRATION);
-           
-
-            while (successes < chessboard_num)
-            {
-                if ((count++ % board_dt) == 0)  //aspetto 20 frame tra l'acquisizione di una scacchiera e la successiva
-                {
-                    if (!CameraCalibration.FindChessboardCorners(_chessboard_gray, new Size(CHESSBOARD_WIDTH, CHESSBOARD_HEIGHT), CALIB_CB_TYPE.DEFAULT, out _chess_corners))
-                    {
-                        continue;
-                    }
-                    else
-                    {
-                        
-
-                        CameraCalibration.DrawChessboardCorners(_chessboard_gray, new Size(CHESSBOARD_WIDTH, CHESSBOARD_HEIGHT), _chess_corners, true);
-
-                        _chessboard_gray.FindCornerSubPix(new PointF[][] { _chess_corners }, new Size(10, 10), new Size(-1, -1), new MCvTermCriteria(300, 0.01));
-
-                        _bitmap_imgs[0] = chessboard.ToBitmap();
-                        _bitmap_imgs[1] = _chessboard_gray.ToBitmap();
-                        refreshVideo(2);
-
-                        //aggiungo le board rilevate corretamente ai dati
-                        if (_chess_corners.Length == corners_num)
-                        {
-                            object_points[successes] = new MCvPoint3D32f[corners_num];
-                            for (int j = 0; j < corners_num; j++)
-                            {
-                                image_points[successes] = _chess_corners;
-                                object_points[successes][j].x = j / CHESSBOARD_WIDTH;
-                                object_points[successes][j].y = j % CHESSBOARD_WIDTH;
-                                object_points[successes][j].z = 0.0f;
-                            }
-
-                            successes++;
-                        }
-                    }
-                    
-                }
-                chessboard = _capture.QueryFrame();
-                _chessboard_gray = chessboard.Convert<Gray, byte>();
-            }
-            MessageBox.Show(successes.ToString() + " chessboard founded", "Searching chessboards result" );
-
-            #region Preparo la matrice intrinseca e calibro la telecamera
-
-            intrinsic_param = new IntrinsicCameraParameters();
-            extrinsic_param = new ExtrinsicCameraParameters[successes];
-            for (int i = 0; i < successes; i++)
-                extrinsic_param[i] = new ExtrinsicCameraParameters();
-
-            CameraCalibration.CalibrateCamera(object_points, image_points, new Size(IMAGE_WIDTH, IMAGE_HEIGHT), intrinsic_param, CALIB_TYPE.DEFAULT, out extrinsic_param);
+            float coinDiameter = Math.Abs(_coinBottomLeft.Y - _coinTopRight.Y);
+            PointF[] dst = new PointF[] 
+            { 
+                new PointF(_coinBottomLeft.X, _coinBottomLeft.Y) ,
+                new PointF(_coinBottomLeft.X, _coinTopRight.Y) ,
+                new PointF(_coinBottomLeft.X + coinDiameter, _coinTopRight.Y) ,
+                new PointF(_coinBottomLeft.X + coinDiameter, _coinBottomLeft.Y) ,
+            };
             
-            #endregion
-
-
-            #region Mostro le immagini non distorte
-            Matrix<float> mapx = new Matrix<float>(new Size(IMAGE_WIDTH, IMAGE_HEIGHT));
-            Matrix<float> mapy = new Matrix<float>(new Size(IMAGE_WIDTH, IMAGE_HEIGHT));
-
-            intrinsic_param.InitUndistortMap(IMAGE_WIDTH, IMAGE_HEIGHT, out mapx, out mapy);  //DA FINIRE
-
-            Image<Bgr, byte> img = chessboard.Clone();
-            CvInvoke.cvRemap(img.Ptr, chessboard.Ptr, mapx.Ptr, mapy.Ptr, 8 /*(int)INTER.CV_INTER_LINEAR | (int)WARP.CV_WARP_FILL_OUTLIERS*/, new MCvScalar(0));
-            _bitmap_imgs[2] = chessboard.ToBitmap();
-            
-            setFormSize(3, CAMERA_CALIBRATION);
-            refreshVideo(3);
-            #endregion
+            HomographyMatrix homographyMatrix;
+            homographyMatrix = CameraCalibration.FindHomography(src, dst, Emgu.CV.CvEnum.HOMOGRAPHY_METHOD.LMEDS, 2.0);
+            _transformedImage = _inputImage.WarpPerspective(homographyMatrix, Emgu.CV.CvEnum.INTER.CV_INTER_LINEAR, Emgu.CV.CvEnum.WARP.CV_WARP_DEFAULT, new Bgr(Color.Black));
         }
-#endif
-    
- 
 
         public Image<Bgr, byte> GetTransformedImage()
         {
@@ -330,10 +270,11 @@ namespace Keyify
         {
             if (_baseLineHasChanged)
             {
-                // TODO Probably need to do proper homography correction
-                // TODO this calculation does not always work
                 _rotationAngle = 180.0 - Math.Atan2((_baseLineStart.Y - _baseLineEnd.Y), (_baseLineStart.X - _baseLineEnd.X)) / Math.PI * 180;
-                _transformedImage = _inputImage.Copy().Rotate(_rotationAngle, new Bgr(Color.Black));
+                _transformedImage = _inputImage.Copy();
+                Homography();
+                _transformedImage = _transformedImage.Rotate(_rotationAngle, new Bgr(Color.Black));
+
 
                 if (OnTransformedImageChanged != null)
                     OnTransformedImageChanged(this, EventArgs.Empty);
