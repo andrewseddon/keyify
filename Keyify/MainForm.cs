@@ -99,7 +99,7 @@ namespace Keyify
                 //_transformedMarkup.Draw(new Cross2DF(new PointF(p.X, p.Y), 20, 300), new Bgr(Color.Green), 3);
                 // TODO need to actually get the transform done via the model
                 Point transformedBaseLineStart = _model.BaseLineStart;
-                _transformedMarkup.Draw(new LineSegment2D(new Point(p.X, transformedBaseLineStart.Y - 400), new Point(p.X, transformedBaseLineStart.Y + 400)), new Bgr(Color.Green), 3);
+                _transformedMarkup.Draw(new LineSegment2D(new Point(p.X, transformedBaseLineStart.Y - 800), new Point(p.X, transformedBaseLineStart.Y + 800)), new Bgr(Color.Green), 3);
                 _transformedMarkup.Draw(new LineSegment2D(new Point(p.X - 20, p.Y), new Point(p.X + 20, p.Y)), new Bgr(Color.Red), 3);
             }
 

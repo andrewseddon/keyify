@@ -127,7 +127,7 @@ namespace Keyify
         public Image<Bgr, byte> GetInputImage()
         { 
             // Make a copy and return as we dont want anything messing around with our image
-            _inputImage._EqualizeHist();
+            // _inputImage._EqualizeHist();
             return _inputImage;//.Copy();
         }
 
@@ -226,8 +226,10 @@ namespace Keyify
              //System.Windows.Forms.MessageBox.Show("Images Used: " + object_points.Length.ToString() + "\n\rIntrinsic Parameters: " + _intrinsicParameters.IntrinsicMatrix.Data.ToString(), "Finished"); 
         }
 
-        public void Homography()
+        public int Homography()
         {
+            return 0;
+#if true
             PointF[] src = new PointF[] 
             { 
                 new PointF(_coinBottomLeft.X, _coinBottomLeft.Y) ,
@@ -235,16 +237,6 @@ namespace Keyify
                 new PointF(_coinTopRight.X, _coinTopRight.Y) ,
                 new PointF(_coinTopRight.X, _coinBottomLeft.Y) ,
             };
-
-            /*
-            PointF[] dst = new PointF[] 
-            { 
-                new PointF(_coinBottomLeft.X, _coinBottomLeft.Y) ,
-                new PointF(_coinBottomLeft.X, _coinTopRight.Y) ,
-                new PointF(_coinTopRight.X, _coinTopRight.Y) ,
-                new PointF(_coinTopRight.X, _coinBottomLeft.Y) ,
-            };
-            */
             
             float coinDiameter = Math.Abs(_coinBottomLeft.Y - _coinTopRight.Y);
             PointF[] dst = new PointF[] 
@@ -254,7 +246,25 @@ namespace Keyify
                 new PointF(_coinBottomLeft.X + coinDiameter, _coinTopRight.Y) ,
                 new PointF(_coinBottomLeft.X + coinDiameter, _coinBottomLeft.Y) ,
             };
-            
+#endif
+#if false
+            PointF[] src = new PointF[] 
+            { 
+                new PointF(175, 1456) ,
+                new PointF(303, 222) ,
+                new PointF(1750, 222) ,
+                new PointF(1947, 1409) ,
+            };
+
+            float coinDiameter = Math.Abs(_coinBottomLeft.Y - _coinTopRight.Y);
+            PointF[] dst = new PointF[] 
+            { 
+                new PointF(0, _inputImage.Height) ,
+                new PointF(0, 0) ,
+                new PointF(_inputImage.Width, 0) ,
+                new PointF(_inputImage.Width, _inputImage.Height) ,
+            };
+#endif
             HomographyMatrix homographyMatrix;
             homographyMatrix = CameraCalibration.FindHomography(src, dst, Emgu.CV.CvEnum.HOMOGRAPHY_METHOD.LMEDS, 2.0);
             _transformedImage = _inputImage.WarpPerspective(homographyMatrix, Emgu.CV.CvEnum.INTER.CV_INTER_LINEAR, Emgu.CV.CvEnum.WARP.CV_WARP_DEFAULT, new Bgr(Color.Black));
@@ -262,7 +272,7 @@ namespace Keyify
 
         public Image<Bgr, byte> GetTransformedImage()
         {
-            _transformedImage._EqualizeHist();
+            //_transformedImage._EqualizeHist();
             return _transformedImage;//.Copy();
         }
 
@@ -361,6 +371,7 @@ namespace Keyify
             for (int i = 0; i < _numberOfCuts; i++)
             {
                 _key.CalculatedCuts[i].Y = (float)GetCutRealDepth(i);
+                _key.CalculatedCuts[i].X = (float)GetCutRealPosition(i);
                 _key.CutError[i].X = _key.CalculatedCuts[i].X - _key.MeasuredCuts[i].X;
                 _key.CutError[i].Y = _key.CalculatedCuts[i].Y - _key.MeasuredCuts[i].Y;
                 if (Math.Abs(_key.CutError[i].Y) > MaxPermissableCutDepthError)
@@ -449,6 +460,13 @@ namespace Keyify
         {
             return (double)Math.Abs((_cuts[index].Y - transformedBaseLineStart.Y) / ((double)(CoinBottomLeft.Y - CoinTopRight.Y) / CoinDiameter));
         }
+
+        public double GetCutRealPosition(int index)
+        {
+            return (double)Math.Abs((_cuts[index].X - transformedBaseLineStart.X) / ((double)(CoinBottomLeft.X - CoinTopRight.X) / CoinDiameter));
+        }
+
+        
     }
 
     /// <summary>
