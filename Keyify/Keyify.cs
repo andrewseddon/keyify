@@ -34,7 +34,7 @@ namespace Keyify
             set
             {
                 _inputImage = value;
-                _transformedImage = _inputImage.Copy();
+                //_transformedImage = _inputImage.Copy();
                 OnInputImageChanged(this, EventArgs.Empty);     
             }
         }
@@ -73,7 +73,7 @@ namespace Keyify
         public Keyify()
         {
             // Setup some defaults
-            NumberOfCuts = 5; 
+            NumberOfCuts = 5;
         }
 
         public void SaveXml(string filename)
@@ -83,6 +83,8 @@ namespace Keyify
             _key._baseLineStart = BaseLineStart;
             _key._baseLineEnd = BaseLineEnd;
             _key._cuts = _cuts;
+            _key._numberOfCuts = NumberOfCuts;
+            _key._interCutDistance = InterCutDistance;
             _key._coinBottomLeft = CoinBottomLeft;
             _key._coinTopRight = CoinTopRight;
             //_measuredCuts = new Point[20];
@@ -105,6 +107,8 @@ namespace Keyify
             BaseLineEnd = _key._baseLineEnd;
             BaseLineStart = _key._baseLineStart; 
             _cuts = _key._cuts;
+            NumberOfCuts = _key._numberOfCuts;
+            InterCutDistance = _key._interCutDistance;
             CoinBottomLeft = _key._coinBottomLeft;
             CoinTopRight = _key._coinTopRight;
             //_measuredCuts = new Point[20];               
@@ -267,24 +271,25 @@ namespace Keyify
 #endif
             HomographyMatrix homographyMatrix;
             homographyMatrix = CameraCalibration.FindHomography(src, dst, Emgu.CV.CvEnum.HOMOGRAPHY_METHOD.LMEDS, 2.0);
-            _transformedImage = _inputImage.WarpPerspective(homographyMatrix, Emgu.CV.CvEnum.INTER.CV_INTER_LINEAR, Emgu.CV.CvEnum.WARP.CV_WARP_DEFAULT, new Bgr(Color.Black));
+            //_transformedImage = _inputImage.WarpPerspective(homographyMatrix, Emgu.CV.CvEnum.INTER.CV_INTER_LINEAR, Emgu.CV.CvEnum.WARP.CV_WARP_DEFAULT, new Bgr(Color.Black));
         }
 
         public Image<Bgr, byte> GetTransformedImage()
         {
             //_transformedImage._EqualizeHist();
-            return _transformedImage;//.Copy();
+            return _transformedImage;
         }
 
         public void CalculateTransform()
         {
+            //Homography();
+
             if (_baseLineHasChanged)
             {
                 _rotationAngle = 180.0 - Math.Atan2((_baseLineStart.Y - _baseLineEnd.Y), (_baseLineStart.X - _baseLineEnd.X)) / Math.PI * 180;
-                _transformedImage = _inputImage.Copy();
-                Homography();
-                _transformedImage = _transformedImage.Rotate(_rotationAngle, new Bgr(Color.Black));
 
+                _transformedImage.Dispose();
+                _transformedImage = _inputImage.Rotate(_rotationAngle, new Bgr(Color.Black));            
 
                 if (OnTransformedImageChanged != null)
                     OnTransformedImageChanged(this, EventArgs.Empty);
@@ -504,6 +509,8 @@ namespace Keyify
         public Point _baseLineEnd;
 
         public Point[] _cuts; // = new Point[20];
+        public int _numberOfCuts;
+        public int _interCutDistance;
         /*
         public Point[] Cuts 
         {

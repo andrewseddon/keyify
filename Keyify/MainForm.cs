@@ -23,6 +23,8 @@ namespace Keyify
         private Image<Bgr, Byte> _transformedMarkup;
 
         private string _inputImageFilename;
+
+        private bool _once = true;
         
         enum EMarkupType { Baseline, CoinVertical, CoinHorizontal};
         EMarkupType _markupMode;
@@ -50,7 +52,7 @@ namespace Keyify
                 //LoadFile("F:\\Projects\\Keyify\\data\\iphone\\IMG_0114.JPG");
                 //LoadFile("F:\\Projects\\Keyify\\data\\t2\\IMG_0171.JPG");
                 //LoadFile("F:\\Projects\\Keyify\\data\\cal1\\IMG_0169.JPG");
-                LoadFile("F:\\Projects\\Keyify\\data\\cal1\\IMG_0169.JPG"); 
+                //LoadFile("F:\\Projects\\Keyify\\data\\cal1\\IMG_0169.JPG"); 
             }
         }
 
@@ -61,7 +63,23 @@ namespace Keyify
 
         void _model_OnTransformedImageChanged(object sender, EventArgs e)
         {
-            transformedDisplay.Image = _model.GetTransformedImage() + _transformedMarkup;
+            UpdateTransformedDisplay();
+        }
+
+        void UpdateTransformedDisplay()
+        {
+            if (transformedDisplay.Image != null)
+                transformedDisplay.Image.Dispose();
+
+            transformedDisplay.Image = _model.TransformedImage + _transformedMarkup;
+        }
+
+        void UpdateInputDisplay()
+        {
+            if (inputDisplay.Image != null)
+                inputDisplay.Image.Dispose();
+
+            inputDisplay.Image = _model.InputImage + _inputMarkup; 
         }
 
         void _model_OnMarkupChanged(object sender, EventArgs e)
@@ -84,15 +102,14 @@ namespace Keyify
             _inputMarkup.Draw(new Rectangle(_model.CoinBottomLeft.X, _model.CoinBottomLeft.Y,
                 _model.CoinTopRight.X - _model.CoinBottomLeft.X, _model.CoinTopRight.Y - _model.CoinBottomLeft.Y), new Bgr(Color.Yellow), 3);
 
-            inputDisplay.Image = _model.GetInputImage() + _inputMarkup;
+            UpdateInputDisplay();
+
 
             if(_transformedMarkup == null)
                 _transformedMarkup = new Image<Bgr, byte>(_model.GetTransformedImage().Width, _model.GetTransformedImage().Height);
             else
                 _transformedMarkup.SetValue(new Bgr(Color.Black));
 
-            //foreach (Point p in _model.Cuts)
-            //{
             for(int i=0; i<_model.NumberOfCuts; i++)
             {
                 Point p = _model.GetCut(i);
@@ -114,7 +131,7 @@ namespace Keyify
             _transformedMarkup.Draw(new Cross2DF(new PointF(_model.transformedBaseLineStart.X, _model.transformedBaseLineStart.Y), 20, 600), new Bgr(Color.Green), 3);
             _transformedMarkup.Draw(new LineSegment2D(_model.transformedBaseLineStart, _model.transformedBaseLineEnd), new Bgr(Color.Blue), 3);
 
-             transformedDisplay.Image = _model.GetTransformedImage() + _transformedMarkup; 
+            UpdateTransformedDisplay();
         }
 
         void _model_OnInputImageChanged(object sender, EventArgs e)
@@ -122,8 +139,6 @@ namespace Keyify
             // Create a markup image the same size as the image we are marking up
             _inputMarkup = new Image<Bgr, byte>(_model.GetInputImage().Width, _model.GetInputImage().Height);
             _transformedMarkup = new Image<Bgr, byte>(_model.GetTransformedImage().Width, _model.GetTransformedImage().Height);
-            // Paint to imageBox
-            inputDisplay.Image = _model.GetInputImage() + _inputMarkup;
         }
 
         private void imageBox1_MouseClick(object sender, MouseEventArgs e)
@@ -292,6 +307,7 @@ namespace Keyify
             // We can drag/drop key files or images, find out which by extension
             if (Path.GetExtension(path) == Keyify.KeyFileExtenstion)
             {
+                _inputImageFilename = Path.ChangeExtension(path, ".JPG");
                 _model.LoadXml(Path.ChangeExtension(path, Keyify.KeyFileExtenstion));
             }
             else if ((Path.GetExtension(path) == ".jpg") || (Path.GetExtension(path) == ".JPG"))
