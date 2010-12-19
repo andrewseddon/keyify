@@ -25,6 +25,9 @@ namespace Keyify
         private string _inputImageFilename;
 
         private bool _once = true;
+
+        private bool _displayMarkup = true;
+        private float _brightnessCoefficient = 1.0f;
         
         enum EMarkupType { Baseline, CoinVertical, CoinHorizontal};
         EMarkupType _markupMode;
@@ -69,9 +72,13 @@ namespace Keyify
         void UpdateTransformedDisplay()
         {
             if (transformedDisplay.Image != null)
-                transformedDisplay.Image.Dispose();
+               transformedDisplay.Image.Dispose();
 
-            transformedDisplay.Image = _model.TransformedImage + _transformedMarkup;
+            if (_displayMarkup)
+                transformedDisplay.Image = (_model.TransformedImage * _brightnessCoefficient) + _transformedMarkup;
+            else
+                // We have to do a copy so that we never dispose the actual TransformedImage
+                transformedDisplay.Image = (_model.TransformedImage * _brightnessCoefficient);
         }
 
         void UpdateInputDisplay()
@@ -79,7 +86,11 @@ namespace Keyify
             if (inputDisplay.Image != null)
                 inputDisplay.Image.Dispose();
 
-            inputDisplay.Image = _model.InputImage + _inputMarkup; 
+            if (_displayMarkup)
+                inputDisplay.Image = (_model.InputImage * _brightnessCoefficient) + _inputMarkup;
+            else
+                // We have to do a copy so that we never dispose the actual InputImage
+                inputDisplay.Image = _model.InputImage * _brightnessCoefficient; 
         }
 
         void _model_OnMarkupChanged(object sender, EventArgs e)
@@ -230,6 +241,32 @@ namespace Keyify
             if (e.KeyCode == Keys.F3)
                 tabControl.SelectedIndex = 2;
 
+            // Toggle display of markup
+            if (e.KeyCode == Keys.F6)
+            {
+                _displayMarkup = !_displayMarkup;
+                UpdateInputDisplay();
+                UpdateTransformedDisplay();
+            }
+
+            // Increase image brightness
+            if (e.KeyCode == Keys.Q)
+            {
+                _brightnessCoefficient += 0.1f;
+                UpdateInputDisplay();
+                UpdateTransformedDisplay();
+            }
+
+            // Decrease image brightness
+            if (e.KeyCode == Keys.A)
+            {
+                _brightnessCoefficient -= 0.1f;
+                UpdateInputDisplay();
+                UpdateTransformedDisplay();
+            }
+
+
+
             // Numbers 1 and two switch between marking up the baseline and coin
             if (e.KeyCode.ToString() == "D1")
                 _markupMode = EMarkupType.Baseline;
@@ -282,13 +319,16 @@ namespace Keyify
 
         private void GenerateStats()
         {
-            statsTextBox.Text = "Intercut Distance (pixels): " + _model.InterCutDistance.ToString() + "\n\r";
-            statsTextBox.Text += "Cut#,Pixels from Shoulder,Pixels from Baseline,Cut Depth(mm)\n\r";
+            statsTextBox.Text = "Space(mm/100)\tCut(mm/100)\n\r";
             for(int i=0; i<_model.NumberOfCuts; i++)
             {
-                statsTextBox.Text += i.ToString() + "," + (_model.GetCut(i).X - _model.transformedBaseLineStart.X).ToString() +
+                statsTextBox.Text += (_model._key.CalculatedCuts[i].X*100).ToString() + "\t" + (_model._key.CalculatedCuts[i].Y*100).ToString() + "\n";
+                    
+                    /*
+                    i.ToString() + "," + (_model.GetCut(i).X - _model.transformedBaseLineStart.X).ToString() +
                     "," + (_model.GetCut(i).Y - _model.transformedBaseLineStart.Y).ToString() +
                     "," + _model.GetCutRealDepth(i).ToString() + "\n\r";
+                     * */
             }
             int coinError = Math.Abs(_model.CoinBottomLeft.X - _model.CoinTopRight.X) - Math.Abs(_model.CoinBottomLeft.Y - _model.CoinTopRight.Y);
             statsTextBox.Text += "Coin Pixel Error: " + coinError.ToString() + "\n\r";

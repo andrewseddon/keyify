@@ -131,7 +131,7 @@ namespace Keyify
         public Image<Bgr, byte> GetInputImage()
         { 
             // Make a copy and return as we dont want anything messing around with our image
-            // _inputImage._EqualizeHist();
+            //_inputImage._EqualizeHist();
             return _inputImage;//.Copy();
         }
 
