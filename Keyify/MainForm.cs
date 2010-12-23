@@ -110,8 +110,14 @@ namespace Keyify
             {
                 _inputMarkup.Draw(new LineSegment2D(_model.BaseLineStart, _model.BaseLineEnd), new Bgr(Color.Blue), 3);
             }  
+
+            // Coin square
             _inputMarkup.Draw(new Rectangle(_model.CoinBottomLeft.X, _model.CoinBottomLeft.Y,
                 _model.CoinTopRight.X - _model.CoinBottomLeft.X, _model.CoinTopRight.Y - _model.CoinBottomLeft.Y), new Bgr(Color.Yellow), 3);
+            // Coin circle
+            PointF center = new PointF(_model.CoinBottomLeft.X + _model.CoinSize.Width/2, _model.CoinBottomLeft.Y - _model.CoinSize.Height/2);
+            float ellipseAngle = 90.0f;
+            _inputMarkup.Draw(new Ellipse(center, _model.CoinSize, ellipseAngle), new Bgr(Color.Red), 1);
 
             UpdateInputDisplay();
 
@@ -148,8 +154,11 @@ namespace Keyify
         void _model_OnInputImageChanged(object sender, EventArgs e)
         {
             // Create a markup image the same size as the image we are marking up
-            _inputMarkup = new Image<Bgr, byte>(_model.GetInputImage().Width, _model.GetInputImage().Height);
+            _inputMarkup = new Image<Bgr, byte>(_model.InputImage.Width, _model.InputImage.Height);
             _transformedMarkup = new Image<Bgr, byte>(_model.GetTransformedImage().Width, _model.GetTransformedImage().Height);
+
+            UpdateInputDisplay();
+            UpdateTransformedDisplay();
         }
 
         private void imageBox1_MouseClick(object sender, MouseEventArgs e)
@@ -330,6 +339,9 @@ namespace Keyify
                     "," + _model.GetCutRealDepth(i).ToString() + "\n\r";
                      * */
             }
+
+            statsTextBox.Text += "\n\r" + (_model.CoinTopRight.X - _model.CoinBottomLeft.X).ToString() + "\t" + (_model.CoinBottomLeft.Y - _model.CoinTopRight.Y) + "\n\r";
+
             int coinError = Math.Abs(_model.CoinBottomLeft.X - _model.CoinTopRight.X) - Math.Abs(_model.CoinBottomLeft.Y - _model.CoinTopRight.Y);
             statsTextBox.Text += "Coin Pixel Error: " + coinError.ToString() + "\n\r";
 

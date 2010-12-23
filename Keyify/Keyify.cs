@@ -1,4 +1,4 @@
-﻿using System;
+﻿  using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -128,11 +128,12 @@ namespace Keyify
             OnInputImageChanged(this, EventArgs.Empty);     
         }
 
-        public Image<Bgr, byte> GetInputImage()
-        { 
-            // Make a copy and return as we dont want anything messing around with our image
-            //_inputImage._EqualizeHist();
-            return _inputImage;//.Copy();
+        private void UpdateImages()
+        {
+            if (OnInputImageChanged != null)
+                OnInputImageChanged(this, EventArgs.Empty);
+            if (OnMarkupChanged != null)
+                OnMarkupChanged(this, EventArgs.Empty);
         }
 
         public void CorrectCameraDistortion(string calibrationFile)
@@ -151,8 +152,7 @@ namespace Keyify
 
              _inputImage = img;
 
-             if(OnInputImageChanged!=null)
-                OnInputImageChanged(this, EventArgs.Empty);
+             UpdateImages();
         }
 
         public void CalibrateCamera(string directory)
@@ -226,14 +226,11 @@ namespace Keyify
              fs.Close();
              
              CorrectCameraDistortion(directory + "\\1.calibration");
-             
-             //System.Windows.Forms.MessageBox.Show("Images Used: " + object_points.Length.ToString() + "\n\rIntrinsic Parameters: " + _intrinsicParameters.IntrinsicMatrix.Data.ToString(), "Finished"); 
         }
 
-        public int Homography()
+        public void Homography()
         {
-            return 0;
-#if true
+#if false
             PointF[] src = new PointF[] 
             { 
                 new PointF(_coinBottomLeft.X, _coinBottomLeft.Y) ,
@@ -251,27 +248,27 @@ namespace Keyify
                 new PointF(_coinBottomLeft.X + coinDiameter, _coinBottomLeft.Y) ,
             };
 #endif
-#if false
+#if true
             PointF[] src = new PointF[] 
             { 
-                new PointF(175, 1456) ,
-                new PointF(303, 222) ,
-                new PointF(1750, 222) ,
-                new PointF(1947, 1409) ,
+                new PointF(311, 1178) ,
+                new PointF(298, 362) ,
+                new PointF(1697, 342) ,
+                new PointF(1721, 1137) ,
             };
 
             float coinDiameter = Math.Abs(_coinBottomLeft.Y - _coinTopRight.Y);
             PointF[] dst = new PointF[] 
             { 
                 new PointF(0, _inputImage.Height) ,
-                new PointF(0, 0) ,
-                new PointF(_inputImage.Width, 0) ,
+                new PointF(0, 300) ,
+                new PointF(_inputImage.Width, 300) ,
                 new PointF(_inputImage.Width, _inputImage.Height) ,
             };
 #endif
             HomographyMatrix homographyMatrix;
             homographyMatrix = CameraCalibration.FindHomography(src, dst, Emgu.CV.CvEnum.HOMOGRAPHY_METHOD.LMEDS, 2.0);
-            //_transformedImage = _inputImage.WarpPerspective(homographyMatrix, Emgu.CV.CvEnum.INTER.CV_INTER_LINEAR, Emgu.CV.CvEnum.WARP.CV_WARP_DEFAULT, new Bgr(Color.Black));
+            _transformedImage = _inputImage.WarpPerspective(homographyMatrix, Emgu.CV.CvEnum.INTER.CV_INTER_LINEAR, Emgu.CV.CvEnum.WARP.CV_WARP_DEFAULT, new Bgr(Color.Black));
         }
 
         public Image<Bgr, byte> GetTransformedImage()
@@ -282,8 +279,9 @@ namespace Keyify
 
         public void CalculateTransform()
         {
-            //Homography();
+          //  Homography();
 
+#if true
             if (_baseLineHasChanged)
             {
                 _rotationAngle = 180.0 - Math.Atan2((_baseLineStart.Y - _baseLineEnd.Y), (_baseLineStart.X - _baseLineEnd.X)) / Math.PI * 180;
@@ -296,6 +294,9 @@ namespace Keyify
 
                 _baseLineHasChanged = false;
             }
+#endif
+            //_transformedImage = _inputImage.GrabCut(new Rectangle(_coinTopRight, new Size(_coinTopRight.X - _coinBottomLeft.X, _coinBottomLeft.Y - _coinTopRight.Y)), 5).Convert<Bgr, byte>();
+            //_transformedImage = _inputImage.GrabCut(new Rectangle(200, 200, 100, 100), 1).Convert<Bgr, byte>();
         }
 
         private Point _baseLineStart = new Point(0,0);
@@ -456,6 +457,14 @@ namespace Keyify
 
                 if (OnMarkupChanged != null)
                     OnMarkupChanged(this, EventArgs.Empty);
+            }
+        }
+
+        public SizeF CoinSize
+        {
+            get
+            {
+                return new SizeF((float)(_coinTopRight.X - _coinBottomLeft.X), (float)(_coinBottomLeft.Y - _coinTopRight.Y));
             }
         }
 
